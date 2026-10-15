@@ -10,7 +10,7 @@ export async function GET() {
       "Content-Type":
         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
       "Content-Disposition":
-        'attachment; filename="pafam2-offer-template.xlsx"',
+        'attachment; filename="perfumes-plus-offer-template.xlsx"',
       "Cache-Control": "no-store",
     },
   });

@@ -35,7 +35,7 @@ function ymd(value: Date | string | null): string {
 
 export async function buildQuoteWorkbook(quote: QuoteForExport): Promise<Buffer> {
   const wb = new ExcelJS.Workbook();
-  wb.creator = "pafam2";
+  wb.creator = "Perfumes+";
   wb.created = new Date();
 
   const sheet = wb.addWorksheet("Quote");

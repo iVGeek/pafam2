@@ -19,7 +19,7 @@ const YES_NO: [string, string][] = [
 
 export async function buildTemplateWorkbook(): Promise<Buffer> {
   const wb = new ExcelJS.Workbook();
-  wb.creator = "pafam2";
+  wb.creator = "Perfumes+";
   wb.created = new Date();
 
   const sheet = wb.addWorksheet("Offers", {

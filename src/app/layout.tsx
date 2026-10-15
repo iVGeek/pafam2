@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "pafam2 — Perfume Wholesale Trading",
+  title: "Perfumes+ — Perfume Wholesale Trading",
   description:
     "Supplier offers, product master, exception queue and trading decisions.",
 };
@@ -52,7 +52,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <header className="border-b border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
           <div className="mx-auto flex max-w-6xl items-center gap-6 px-6 py-3">
             <Link href="/" className="font-semibold tracking-tight">
-              pafam2
+              Perfumes+
             </Link>
             <nav className="flex flex-wrap gap-4 text-sm">
               {nav.map((item) => (
