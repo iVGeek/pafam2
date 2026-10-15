@@ -32,6 +32,10 @@ export default async function UploadDetailPage({
   if (!upload) notFound();
 
   const fileIssues = upload.issues.filter((i) => !i.uploadRowId);
+  const cleanedCount = upload.rows.reduce(
+    (sum, row) => sum + row.issues.filter((i) => i.code === "CLEANED").length,
+    0,
+  );
 
   return (
     <div className="flex flex-col gap-6">
@@ -39,11 +43,23 @@ export default async function UploadDetailPage({
         <Link href="/uploads" className="text-sm underline">
           ← Uploads
         </Link>
-        <h1 className="mt-2 text-2xl font-semibold tracking-tight">
-          {upload.filename}
-        </h1>
+        <div className="mt-2 flex flex-wrap items-start justify-between gap-3">
+          <h1 className="text-2xl font-semibold tracking-tight">
+            {upload.filename}
+          </h1>
+          <a
+            href={`/api/uploads/${upload.id}/cleaned`}
+            className="rounded-md bg-emerald-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-600"
+          >
+            Download cleaned file
+          </a>
+        </div>
         <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
           {upload.status} · {upload.message}
+        </p>
+        <p className="mt-1 text-xs text-zinc-500">
+          Cleaned automatically on import to match the template format
+          {cleanedCount > 0 ? ` — ${cleanedCount} value(s) normalised.` : "."}
         </p>
         <dl className="mt-3 grid grid-cols-2 gap-x-8 gap-y-1 text-sm sm:grid-cols-4">
           <Info label="Rows" value={upload.rowCount} />

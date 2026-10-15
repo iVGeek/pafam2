@@ -1,4 +1,5 @@
 import { analyzeCode } from "./gtin";
+import { cleanRow } from "./clean";
 
 export type IssueSeverity = "ERROR" | "WARNING" | "INFO";
 
@@ -88,6 +89,20 @@ export function validateRow(values: Record<string, unknown>): RowValidation {
   ): void => {
     issues.push({ code, message, severity, field });
   };
+
+  // Auto-clean the row into the canonical template vocabulary before
+  // validating. Every change is recorded as an INFO issue so the cleaning is
+  // visible and auditable on the upload.
+  const clean = cleanRow(values);
+  values = clean.values;
+  for (const note of clean.notes) {
+    add(
+      "CLEANED",
+      `Cleaned ${note.field}: "${note.from}" → "${note.to}" (${note.reason}).`,
+      "INFO",
+      note.field,
+    );
+  }
 
   const originalCodeRaw = str(values.original_code) ?? "";
   const internalSku = str(values.internal_sku);

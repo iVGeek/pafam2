@@ -1,6 +1,7 @@
 import ExcelJS from "exceljs";
 import { COLUMNS, type ColumnGroup } from "./columns";
 import { cellValue } from "./parse";
+import { matchHeader } from "./clean";
 
 const GROUP_FILL: Record<ColumnGroup, string> = {
   "Matching keys": "FF1F3864",
@@ -126,6 +127,91 @@ export async function buildTemplateWorkbook(): Promise<Buffer> {
   return Buffer.from(buffer);
 }
 
+// ---------------------------------------------------------------------------
+// Cleaned pricelist export
+// ---------------------------------------------------------------------------
+
+function cellText(value: unknown): string | null {
+  if (value === null || value === undefined) return null;
+  if (value instanceof Date) return value.toISOString().slice(0, 10);
+  if (typeof value === "boolean") return value ? "yes" : "no";
+  const s = String(value).trim();
+  return s === "" ? null : s;
+}
+
+const NUMERIC_KEYS = new Set([
+  "price",
+  "available_quantity",
+  "units_per_case",
+  "moq",
+  "order_multiple",
+  "price_tier_min",
+  "price_tier_max",
+  "lead_time_days",
+  "size_ml",
+]);
+
+/**
+ * Write cleaned records back out in the system template's exact columns and
+ * order. Used for the auto-generated "cleaned pricelist" download so a supplier
+ * file can always be re-exported in our canonical shape.
+ */
+export async function buildOffersWorkbook(
+  rows: Record<string, unknown>[],
+  sheetName = "Offers",
+): Promise<Buffer> {
+  const wb = new ExcelJS.Workbook();
+  wb.creator = "Perfumes+";
+  wb.created = new Date();
+
+  const sheet = wb.addWorksheet(sheetName, {
+    views: [{ state: "frozen", ySplit: 1 }],
+  });
+  sheet.columns = COLUMNS.map((c) => ({
+    header: c.header,
+    key: c.key,
+    width: Math.min(Math.max(c.header.length + 4, 14), 28),
+  }));
+
+  const header = sheet.getRow(1);
+  header.height = 30;
+  header.eachCell((cell, colNumber) => {
+    const col = COLUMNS[colNumber - 1];
+    cell.font = { bold: true, color: { argb: "FFFFFFFF" }, size: 11 };
+    cell.fill = {
+      type: "pattern",
+      pattern: "solid",
+      fgColor: { argb: GROUP_FILL[col.group] },
+    };
+    cell.alignment = { vertical: "middle", horizontal: "center", wrapText: true };
+  });
+
+  for (const row of rows) {
+    const values = COLUMNS.map((c) => {
+      const raw = row[c.key];
+      if (NUMERIC_KEYS.has(c.key)) {
+        const n = typeof raw === "number" ? raw : raw === null || raw === undefined || raw === "" ? null : Number(raw);
+        return n === null || !Number.isFinite(n) ? cellText(raw) : n;
+      }
+      return cellText(raw);
+    });
+    sheet.addRow(values);
+  }
+
+  // Keep code columns as text so leading zeros survive a round-trip.
+  const codeCols = COLUMNS.map((c, i) => ({ key: c.key, i })).filter((c) =>
+    ["original_code", "internal_sku"].includes(c.key),
+  );
+  for (const { i } of codeCols) {
+    for (let r = 2; r <= sheet.rowCount; r++) {
+      sheet.getCell(r, i + 1).numFmt = "@";
+    }
+  }
+
+  const buffer = await wb.xlsx.writeBuffer();
+  return Buffer.from(buffer);
+}
+
 export type ParsedRow = {
   rowNumber: number;
   /** Values keyed by canonical column key. */
@@ -196,19 +282,6 @@ export async function parseOffersWorkbook(
   return { sheetName: sheet.name, headers, mapping, unknownHeaders, rows };
 }
 
-function normaliseHeader(header: string): string {
-  return header.toLowerCase().replace(/[^a-z0-9]/g, "");
-}
+// Header matching (canonical template names + supplier aliases) lives in
+// ./clean so the same alias table drives import cleaning and mapping.
 
-let headerLookup: Map<string, string> | null = null;
-function matchHeader(header: string): string | null {
-  if (!headerLookup) {
-    headerLookup = new Map(
-      COLUMNS.map((c) => [normaliseHeader(c.header), c.key]),
-    );
-  }
-  const norm = normaliseHeader(header);
-  // Exact match on template header, else treat as unknown. Suppliers are
-  // expected to use the published template rather than invent headers.
-  return headerLookup.get(norm) ?? null;
-}
