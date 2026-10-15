@@ -9,9 +9,13 @@ services:
     runtime: node
     plan: free
     buildCommand: npm ci && npx prisma generate && npm run build
-    # Apply committed migrations, then start the Node.js server.
-    startCommand: npx prisma migrate deploy && npm run start
-    healthCheckPath: /
+    # Apply committed migrations, seed the shared defaults (idempotent), then
+    # start the server. Migrations run at start because this blueprint creates
+    # the database alongside the service, so it may not exist at build time.
+    startCommand: npx prisma migrate deploy && npx prisma db seed && npm run start
+    # /api/health reports 200 only when the database is reachable and migrated,
+    # so a service with a missing DATABASE_URL never looks "healthy".
+    healthCheckPath: /api/health
     autoDeploy: true
     envVars:
       - key: DATABASE_URL
