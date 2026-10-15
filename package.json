@@ -1,0 +1,47 @@
+{
+  "name": "pafam2",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint",
+    "db:start": "node scripts/dev-db.mjs start",
+    "db:verify": "tsx scripts/verify.ts",
+    "db:verify-pricing": "tsx scripts/verify-pricing.ts",
+    "db:verify-alerts": "tsx scripts/verify-alerts.ts",
+    "db:verify-demands": "tsx scripts/verify-demands.ts",
+    "db:verify-suppliers": "tsx scripts/verify-suppliers.ts",
+    "db:verify-exposure": "tsx scripts/verify-exposure.ts",
+    "db:verify-opportunities": "tsx scripts/verify-opportunities.ts",
+    "db:verify-customer-pricing": "tsx scripts/verify-customer-pricing.ts",
+    "db:verify-inventory-analytics": "tsx scripts/verify-inventory-analytics.ts",
+    "db:verify-kpis": "tsx scripts/verify-kpis.ts",
+    "postinstall": "prisma generate",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate deploy",
+    "db:seed": "tsx prisma/seed.ts"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.19.3",
+    "exceljs": "^4.4.0",
+    "next": "16.4.0",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@tailwindcss/turbopack": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "embedded-postgres": "^17.9.0-beta.17",
+    "eslint": "^9",
+    "eslint-config-next": "16.4.0",
+    "prisma": "^6.19.3",
+    "tailwindcss": "^4",
+    "tsx": "^4.23.15",
+    "typescript": "^5"
+  }
+}

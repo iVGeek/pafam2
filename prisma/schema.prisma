@@ -1,0 +1,830 @@
+// Perfume Wholesale Trading Platform — data foundation (Phase 1)
+// Authoritative records and history live here; Excel is import/export only.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  MANAGER
+  PURCHASING
+  SALES
+  ACCOUNTS
+  WAREHOUSE
+}
+
+enum CodeType {
+  EAN
+  UPC
+  GTIN
+}
+
+// Packaging level a barcode belongs to. Never equate a CASE barcode to a
+// bottle without a verified units-per-case conversion.
+enum PackagingLevel {
+  UNIT
+  CASE
+  TESTER
+  GIFT_SET
+  REFILL
+  DAMAGED
+  UNKNOWN
+}
+
+enum OfferStatus {
+  ACTIVE
+  STALE
+  EXPIRED
+}
+
+enum UploadStatus {
+  PENDING
+  VALIDATED
+  FAILED
+  DUPLICATE
+}
+
+enum UploadRowStatus {
+  OK
+  EXCEPTION
+  DUPLICATE
+}
+
+enum IssueSeverity {
+  ERROR
+  WARNING
+  INFO
+}
+
+// A person who can act on the system. Role drives access (see §19).
+model AppUser {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String
+  role      Role     @default(PURCHASING)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// Product master. One row per internally-recognised sellable product.
+model Product {
+  id               String   @id @default(cuid())
+  internalSku      String   @unique
+  // Canonical GTIN padded to 14 digits for valid GTINs (source kept on aliases).
+  gtin14           String?  @unique
+  brand            String?
+  fragranceName    String?
+  concentration    String?
+  sizeMl           Int?
+  genderOrCategory String?
+  setContents      String?
+  notes            String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  aliases         BarcodeAlias[]
+  offers          Offer[]
+  demands         Demand[]
+  deals           Deal[]
+  quoteLines      QuoteLine[]
+  inventory       InventoryItem[]
+  marketPrices    MarketPrice[]
+  noteExtractions NoteExtraction[]
+
+  @@index([brand, fragranceName])
+}
+
+// Internal SKU / barcode alias table. Source value preserved verbatim (text).
+model BarcodeAlias {
+  id             String         @id @default(cuid())
+  code           String // stored as text to retain leading zeros
+  codeType       CodeType       @default(EAN)
+  packagingLevel PackagingLevel @default(UNIT)
+  unitsPerCase   Int?
+  sourceValue    String? // original value exactly as supplied
+  productId      String
+  createdAt      DateTime       @default(now())
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([code, packagingLevel])
+  @@index([code])
+}
+
+model Supplier {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  country   String?
+  active    Boolean  @default(true)
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  offers  Offer[]
+  uploads UploadFile[]
+  deals   Deal[]
+
+  @@index([name])
+}
+
+// The party who actually owns the stock (may differ from the broker/supplier).
+model StockOwner {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  country   String?
+  notes     String?
+  createdAt DateTime @default(now())
+
+  lots   Lot[]
+  offers Offer[]
+}
+
+model Lot {
+  id              String    @id @default(cuid())
+  stockOwnerId    String
+  lotReference    String
+  manufactureDate DateTime?
+  uniqueLotRef    String?
+  createdAt       DateTime  @default(now())
+
+  stockOwner StockOwner @relation(fields: [stockOwnerId], references: [id], onDelete: Cascade)
+  offers     Offer[]
+
+  @@unique([stockOwnerId, lotReference])
+}
+
+// One row per supplier offer observation (dated; never overwrites history).
+model Offer {
+  id      String      @id @default(cuid())
+  status  OfferStatus @default(ACTIVE)
+  offerId String? // supplier's own offer id
+
+  supplierId   String
+  productId    String? // null until matched
+  stockOwnerId String?
+  lotId        String?
+
+  // --- Source and dates ---
+  listDate              DateTime?
+  validUntil            DateTime?
+  lastStockConfirmation DateTime?
+  sourceFileId          String?
+  sourceRow             Int?
+
+  // --- Product identity (as supplied, before/at match) ---
+  originalCode     String // original EAN/UPC as text
+  originalCodeType CodeType @default(EAN)
+  brand            String?
+  fragranceName    String?
+  concentration    String?
+  sizeMl           Int?
+  genderOrCategory String?
+  setContents      String?
+
+  // --- Packaging and condition ---
+  packagingLevel  PackagingLevel @default(UNKNOWN)
+  hasCap          Boolean?
+  hasBox          Boolean?
+  sealed          Boolean?
+  damageStatus    String?
+  batchOrLotRef   String?
+  manufactureDate DateTime?
+
+  // --- Price and quantity ---
+  currency          String?
+  price             Decimal?        @db.Decimal(14, 4)
+  priceBasis        PackagingLevel? // per unit or per case
+  unitsPerCase      Int?
+  availableQuantity Decimal?        @db.Decimal(18, 3)
+  quantityUnit      String?
+  moq               Int?
+  orderMultiple     Int?
+  priceTierMin      Int?
+  priceTierMax      Int?
+
+  // --- Logistics and terms ---
+  stockCountry      String?
+  warehouse         String?
+  countryOfOrigin   String?
+  incoterm          String?
+  namedPlace        String?
+  readyDate         DateTime?
+  leadTimeDays      Int?
+  paymentTerms      String?
+  freightInclusions String?
+
+  // --- Eligibility and evidence ---
+  permittedDestinations String?
+  permittedChannels     String?
+  usSuitability         String?
+  authenticityDocs      String?
+  stockOwnerRef         String?
+  uniqueLotReference    String?
+  stockConfidence       String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  supplier   Supplier    @relation(fields: [supplierId], references: [id])
+  product    Product?    @relation(fields: [productId], references: [id])
+  stockOwner StockOwner? @relation(fields: [stockOwnerId], references: [id])
+  lot        Lot?        @relation(fields: [lotId], references: [id])
+  sourceFile UploadFile? @relation(fields: [sourceFileId], references: [id])
+  uploadRows UploadRow[]
+  deals      Deal[]
+
+  @@index([productId])
+  @@index([supplierId])
+  @@index([listDate])
+  @@index([status])
+  @@index([originalCode])
+}
+
+// Upload audit log. Original file + hash + version retained.
+model UploadFile {
+  id          String       @id @default(cuid())
+  filename    String
+  storedName  String?
+  sha256      String
+  fileSize    Int?
+  supplierId  String?
+  listDate    DateTime?
+  rowCount    Int          @default(0)
+  validRows   Int          @default(0)
+  invalidRows Int          @default(0)
+  status      UploadStatus @default(PENDING)
+  message     String?
+  uploadedBy  String?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  supplier Supplier?         @relation(fields: [supplierId], references: [id])
+  rows     UploadRow[]
+  issues   ValidationIssue[]
+  offers   Offer[]
+  audit    AuditLog[]
+
+  @@index([sha256])
+  @@index([createdAt])
+}
+
+// Every raw row from a source file, kept for traceability and review.
+model UploadRow {
+  id           String          @id @default(cuid())
+  uploadFileId String
+  rowNumber    Int
+  rawJson      Json
+  status       UploadRowStatus @default(OK)
+  offerId      String?
+  createdAt    DateTime        @default(now())
+
+  uploadFile UploadFile        @relation(fields: [uploadFileId], references: [id], onDelete: Cascade)
+  offer      Offer?            @relation(fields: [offerId], references: [id])
+  issues     ValidationIssue[]
+
+  @@unique([uploadFileId, rowNumber])
+}
+
+// ---------------------------------------------------------------------------
+// Phase 2 — Trading engine: FX, deals/profitability, customers, demand, quotes
+// ---------------------------------------------------------------------------
+
+enum CostCategory {
+  FREIGHT
+  INSURANCE
+  DUTY
+  BROKERAGE
+  HANDLING
+  TAX
+  RECOVERABLE
+  OUTBOUND
+  COMMISSION
+  FEES
+  STORAGE
+  FINANCING
+  CREDIT_LOSS
+  OTHER
+}
+
+enum DealStatus {
+  DRAFT
+  REVIEWED
+  APPROVED
+  WON
+  LOST
+}
+
+enum DemandStatus {
+  WISHLIST
+  REQUEST
+  QUOTE
+  CONFIRMED
+  FULFILLED
+  LOST
+  EXPIRED
+}
+
+// Whether a demand line is an explicit stated requirement or inferred interest.
+enum DemandCertainty {
+  EXACT
+  INFERRED
+}
+
+enum QuoteStatus {
+  DRAFT
+  APPROVED
+  SENT
+  ACCEPTED
+  DECLINED
+  EXPIRED
+}
+
+// Dated exchange rate expressed as USD per one unit of the source currency.
+model FxRate {
+  id            String   @id @default(cuid())
+  baseCurrency  String // source currency, e.g. EUR
+  quoteCurrency String   @default("USD")
+  rate          Decimal  @db.Decimal(18, 8) // USD per 1 base
+  rateDate      DateTime
+  source        String?
+  booked        Boolean  @default(false)
+  createdAt     DateTime @default(now())
+
+  @@unique([baseCurrency, quoteCurrency, rateDate, source])
+  @@index([baseCurrency, rateDate])
+}
+
+model Customer {
+  id                 String   @id @default(cuid())
+  name               String   @unique
+  company            String?
+  contactName        String?
+  contactEmail       String?
+  contactPhone       String?
+  destinationCountry String? // USA
+  destinationCity    String?
+  channels           String?
+  accountOwner       String?
+  currency           String   @default("USD")
+  paymentTerms       String?
+  creditLimit        Decimal? @db.Decimal(18, 2)
+  notes              String?
+  active             Boolean  @default(true)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  demands Demand[]
+  deals   Deal[]
+  quotes  Quote[]
+
+  reservations  InventoryReservation[]
+  capturedNotes Note[]
+  tasks         FollowUpTask[]
+
+  @@index([name])
+}
+
+// NOTE: Deal↔Quote linkage is via QuoteLine.dealId (see below).
+
+// One dated record per customer requirement (never overwritten).
+model Demand {
+  id         String          @id @default(cuid())
+  customerId String
+  status     DemandStatus    @default(WISHLIST)
+  certainty  DemandCertainty @default(EXACT)
+
+  productId            String?
+  barcode              String?
+  internalSku          String?
+  brand                String?
+  fragranceName        String?
+  concentration        String?
+  sizeMl               Int?
+  packagingRequirement String?
+
+  quantity      Decimal?  @db.Decimal(18, 3)
+  quantityUnit  String?
+  targetPrice   Decimal?  @db.Decimal(18, 4)
+  currency      String    @default("USD")
+  deliveryBasis String?
+  destination   String?
+  neededBy      DateTime?
+  paymentTerms  String?
+
+  evidence             String?
+  meetingDate          DateTime?
+  owner                String?
+  lastReconfirmed      DateTime?
+  extractionConfidence Int?
+  matchConfidence      Int?
+  approved             Boolean   @default(false)
+  approvedBy           String?
+  expiryDate           DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  product  Product? @relation(fields: [productId], references: [id])
+
+  reservations InventoryReservation[]
+
+  appliedExtractions NoteExtraction[]
+  tasks              FollowUpTask[]
+
+  @@index([customerId])
+  @@index([status])
+  @@index([productId])
+  @@index([barcode])
+}
+
+// A scored buying/quote opportunity. Computed USD metrics are stored for audit;
+// the engine recomputes them from inputs on every save.
+model Deal {
+  id     String     @id @default(cuid())
+  status DealStatus @default(DRAFT)
+
+  supplierId String
+  productId  String?
+  customerId String?
+  offerId    String?
+
+  quantity Decimal @db.Decimal(18, 3)
+
+  buyCurrency   String
+  buyPrice      Decimal        @db.Decimal(18, 4) // per unit, in buy currency
+  buyPriceBasis PackagingLevel @default(UNIT)
+  unitsPerCase  Int?
+
+  fxRate     Decimal?  @db.Decimal(18, 8)
+  fxRateDate DateTime?
+  fxSource   String?
+
+  sellingPriceUsd Decimal? @db.Decimal(18, 4)
+
+  landedUnitCost        Decimal? @db.Decimal(18, 4)
+  netUnitRevenue        Decimal? @db.Decimal(18, 4)
+  grossProfit           Decimal? @db.Decimal(18, 2)
+  grossMarginPct        Decimal? @db.Decimal(9, 4)
+  dealContribution      Decimal? @db.Decimal(18, 2)
+  contributionMarginPct Decimal? @db.Decimal(9, 4)
+  cashRequirement       Decimal? @db.Decimal(18, 2)
+  cashCycleDays         Int?
+  capitalEfficiencyPct  Decimal? @db.Decimal(9, 4)
+  annualisedReturnPct   Decimal? @db.Decimal(9, 4)
+  suggestedSellPrice    Decimal? @db.Decimal(18, 4)
+
+  incomplete    Boolean @default(false)
+  missingInputs Json?
+  notes         String?
+  owner         String?
+  // Why a deal was lost (§16). Captured when a deal is marked LOST.
+  lostReason    String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  supplier   Supplier    @relation(fields: [supplierId], references: [id])
+  product    Product?    @relation(fields: [productId], references: [id])
+  customer   Customer?   @relation(fields: [customerId], references: [id])
+  offer      Offer?      @relation(fields: [offerId], references: [id])
+  costs      DealCost[]
+  quoteLines QuoteLine[]
+
+  inventoryItems InventoryItem[]
+  reservations   InventoryReservation[]
+
+  @@index([status])
+  @@index([supplierId])
+  @@index([productId])
+}
+
+// Cost line on a deal. Recoverable amounts affect funding but not permanent cost.
+model DealCost {
+  id          String       @id @default(cuid())
+  dealId      String
+  category    CostCategory
+  label       String
+  amount      Decimal      @db.Decimal(18, 4)
+  currency    String       @default("USD")
+  recoverable Boolean      @default(false)
+  driver      String?
+  notes       String?
+  createdAt   DateTime     @default(now())
+
+  deal Deal @relation(fields: [dealId], references: [id], onDelete: Cascade)
+
+  @@index([dealId])
+}
+
+model Quote {
+  id            String      @id @default(cuid())
+  quoteNumber   String      @unique
+  customerId    String
+  status        QuoteStatus @default(DRAFT)
+  currency      String      @default("USD")
+  validUntil    DateTime?
+  paymentTerms  String?
+  deliveryBasis String?
+  destination   String?
+  notes         String?
+  owner         String?
+  approvedBy    String?
+  approvedAt    DateTime?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  customer Customer    @relation(fields: [customerId], references: [id])
+  lines    QuoteLine[]
+
+  @@index([customerId])
+  @@index([status])
+}
+
+// Customer-facing line. Must never expose supplier names or buying costs (§16).
+model QuoteLine {
+  id          String  @id @default(cuid())
+  quoteId     String
+  dealId      String?
+  productId   String?
+  description String
+  quantity    Decimal @db.Decimal(18, 3)
+  unitPrice   Decimal @db.Decimal(18, 4)
+  currency    String  @default("USD")
+
+  quote   Quote    @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  product Product? @relation(fields: [productId], references: [id])
+  deal    Deal?    @relation(fields: [dealId], references: [id])
+
+  @@index([quoteId])
+}
+
+// Own stock by SKU, warehouse and lot (11.1). Reserved quantity is derived
+// from active reservations; available to sell = usable on hand - reservations.
+enum InventoryStatus {
+  USABLE
+  IN_TRANSIT
+  QUARANTINED
+  DAMAGED
+}
+
+enum ReservationStatus {
+  ACTIVE
+  FULFILLED
+  RELEASED
+}
+
+model InventoryItem {
+  id        String          @id @default(cuid())
+  productId String
+  status    InventoryStatus @default(USABLE)
+
+  warehouse String?
+  territory String? // e.g. US
+  lotRef    String?
+  batchRef  String?
+
+  quantity    Decimal  @default(0) @db.Decimal(18, 3)
+  unitCostUsd Decimal? @db.Decimal(14, 4) // landed cost per sellable unit
+
+  acquiredDate DateTime?
+  dealId       String? // provenance when received from a deal
+  notes        String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  product      Product                @relation(fields: [productId], references: [id])
+  deal         Deal?                  @relation(fields: [dealId], references: [id])
+  reservations InventoryReservation[]
+
+  @@index([productId])
+  @@index([warehouse])
+  @@index([status])
+}
+
+// Active reservations hold stock for a demand/deal/customer. They reduce
+// available-to-sell but do not change physical on-hand until fulfilled.
+model InventoryReservation {
+  id              String            @id @default(cuid())
+  inventoryItemId String
+  quantity        Decimal           @db.Decimal(18, 3)
+  status          ReservationStatus @default(ACTIVE)
+  demandId        String?
+  dealId          String?
+  customerId      String?
+  note            String?
+  createdBy       String?
+  createdAt       DateTime          @default(now())
+  resolvedAt      DateTime?
+
+  inventoryItem InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
+  demand        Demand?       @relation(fields: [demandId], references: [id])
+  deal          Deal?         @relation(fields: [dealId], references: [id])
+  customer      Customer?     @relation(fields: [customerId], references: [id])
+
+  @@index([inventoryItemId])
+  @@index([status])
+}
+
+// ---------------------------------------------------------------------------
+// Phase 3 - Intelligence (§12 trends, §14-16 notes and tasks)
+// ---------------------------------------------------------------------------
+
+// Manually recorded public retail / market price observation, kept as its own
+// series and never mixed with supplier asks or our own trades (§12).
+enum MarketPriceKind {
+  PUBLIC_RETAIL
+  WHOLESALE_SALE
+  OTHER
+}
+
+model MarketPrice {
+  id           String          @id @default(cuid())
+  productId    String
+  kind         MarketPriceKind @default(PUBLIC_RETAIL)
+  price        Decimal         @db.Decimal(14, 4)
+  currency     String          @default("USD")
+  observedDate DateTime
+  source       String?
+  territory    String?
+  note         String?
+  createdAt    DateTime        @default(now())
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId, observedDate])
+}
+
+enum NoteSource {
+  PLAUD
+  REMARKABLE
+  MANUAL
+}
+
+enum NoteStatus {
+  RECEIVED
+  REVIEWED
+  ARCHIVED
+}
+
+// A captured conversation note. The original transcript/note is preserved
+// verbatim and never overwritten (§15.1, §15.6).
+model Note {
+  id             String     @id @default(cuid())
+  source         NoteSource @default(MANUAL)
+  status         NoteStatus @default(RECEIVED)
+  customerId     String?
+  meetingDate    DateTime?
+  staffMember    String?
+  filename       String?
+  sourceLocation String? // where the original file lives (drive, notebook path)
+  rawText        String
+  summary        String?
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+
+  customer    Customer?        @relation(fields: [customerId], references: [id])
+  extractions NoteExtraction[]
+  tasks       FollowUpTask[]
+
+  @@index([customerId])
+  @@index([source])
+  @@index([status])
+}
+
+enum ExtractionKind {
+  PRODUCT_MENTION
+  QUANTITY
+  TARGET_PRICE
+  DEADLINE
+  CHANNEL_RESTRICTION
+  OBJECTION
+  COMPETITOR_QUOTE
+  FOLLOW_UP
+}
+
+enum ExtractionStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+// A single claim extracted from a note. Carries the exact source excerpt so a
+// claim can be traced back to the note (§15.4). Unclear values stay unresolved.
+model NoteExtraction {
+  id     String           @id @default(cuid())
+  noteId String
+  kind   ExtractionKind
+  status ExtractionStatus @default(PENDING)
+
+  productText  String?
+  barcode      String?
+  productId    String?
+  quantity     Decimal?  @db.Decimal(18, 3)
+  quantityUnit String?
+  targetPrice  Decimal?  @db.Decimal(18, 4)
+  currency     String?
+  neededBy     DateTime?
+  dueDate      DateTime?
+  detail       String?
+  excerpt      String
+  pageRef      String?
+  confidence   Int? // 0-100 heuristic
+
+  appliedDemandId String?
+  reviewedBy      String?
+  reviewedAt      DateTime?
+  createdAt       DateTime  @default(now())
+
+  note          Note     @relation(fields: [noteId], references: [id], onDelete: Cascade)
+  product       Product? @relation(fields: [productId], references: [id])
+  appliedDemand Demand?  @relation(fields: [appliedDemandId], references: [id])
+
+  @@index([noteId])
+  @@index([status])
+  @@index([kind])
+}
+
+enum TaskStatus {
+  OPEN
+  DONE
+  CANCELLED
+}
+
+model FollowUpTask {
+  id          String     @id @default(cuid())
+  noteId      String?
+  customerId  String?
+  demandId    String?
+  title       String
+  detail      String?
+  dueDate     DateTime?
+  owner       String?
+  status      TaskStatus @default(OPEN)
+  createdAt   DateTime   @default(now())
+  completedAt DateTime?
+
+  note     Note?     @relation(fields: [noteId], references: [id], onDelete: SetNull)
+  customer Customer? @relation(fields: [customerId], references: [id])
+  demand   Demand?   @relation(fields: [demandId], references: [id])
+
+  @@index([status])
+  @@index([dueDate])
+}
+
+// Validation / exception queue.
+model ValidationIssue {
+  id           String        @id @default(cuid())
+  uploadFileId String
+  uploadRowId  String?
+  code         String
+  field        String?
+  message      String
+  severity     IssueSeverity @default(ERROR)
+  resolved     Boolean       @default(false)
+  resolvedBy   String?
+  resolvedAt   DateTime?
+  resolution   String?
+  createdAt    DateTime      @default(now())
+
+  uploadFile UploadFile @relation(fields: [uploadFileId], references: [id], onDelete: Cascade)
+  uploadRow  UploadRow? @relation(fields: [uploadRowId], references: [id], onDelete: Cascade)
+
+  @@index([uploadFileId])
+  @@index([resolved])
+}
+
+// Immutable audit trail for all sensitive changes.
+model AuditLog {
+  id           String   @id @default(cuid())
+  actor        String?
+  action       String
+  entityType   String
+  entityId     String?
+  before       Json?
+  after        Json?
+  details      String?
+  uploadFileId String?
+  createdAt    DateTime @default(now())
+
+  uploadFile UploadFile? @relation(fields: [uploadFileId], references: [id])
+
+  @@index([entityType, entityId])
+  @@index([createdAt])
+}
+
+// Manager-configurable thresholds (min margins, capital limits, freshness...).
+model Setting {
+  key       String   @id
+  value     Json
+  updatedBy String?
+  updatedAt DateTime @updatedAt
+}
