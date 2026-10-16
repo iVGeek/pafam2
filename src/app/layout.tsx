@@ -28,6 +28,7 @@ const nav = [
   { href: "/opportunities", label: "Opportunities" },
   { href: "/deals", label: "Deals" },
   { href: "/quotes", label: "Quotes" },
+  { href: "/compare", label: "Compare" },
   { href: "/inventory", label: "Inventory" },
   { href: "/demands", label: "Demand" },
   { href: "/pricing", label: "Pricing" },
