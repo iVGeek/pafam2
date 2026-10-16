@@ -47,6 +47,6 @@ export async function POST(request: Request) {
     ok: true,
     user: { id: user.id, name: user.name, email: user.email, role: user.role },
   });
-  response.cookies.set(SESSION_COOKIE, signSession(user.id), COOKIE_OPTIONS);
+  response.cookies.set(SESSION_COOKIE, signSession(user.id, user.role), COOKIE_OPTIONS);
   return response;
 }

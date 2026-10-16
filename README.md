@@ -37,6 +37,8 @@ in **PostgreSQL**.
   incomplete, never shown as a false zero-cost result.
 - **Quotes never leak supply-side data** — customer exports contain no supplier
   names or buying costs.
+- **Roles are enforced, fail-closed** — each account opens only its role's areas;
+  unclassified routes are admin-only. See `docs/staff-guide.md` §11.
 
 Full field reference: [`docs/data-dictionary.md`](docs/data-dictionary.md).
 How every money figure is calculated: [`docs/calculation-spec.md`](docs/calculation-spec.md).
@@ -160,8 +162,6 @@ Deliberately not yet implemented, and documented as such:
 - Duplicate-supply **stock pooling** across brokers (§11.1).
 - **Forecasts** (§12) — deferred until enough reliable history exists, as the
   brief requires.
-- Per-**role** access enforcement (§19) — the `Role` field exists but is not yet
-  enforced; every signed-in user currently has full access.
 
 See [`docs/requirements.md`](docs/requirements.md) for the full brief and
 `docs/data-dictionary.md` §12 for the field-level version of this list.

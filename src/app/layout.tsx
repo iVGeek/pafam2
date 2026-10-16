@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Geist, Geist_Mono } from "next/font/google";
 import { getCurrentUser } from "@/lib/session";
+import { canAccess } from "@/lib/access";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -49,6 +50,7 @@ const nav = [
 
 export default async function RootLayout({ children }: LayoutProps<"/">) {
   const user = await getCurrentUser();
+  const links = user ? nav.filter((item) => canAccess(user.role, item.href)) : [];
 
   return (
     <html
@@ -64,7 +66,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
                   Perfumes+
                 </Link>
                 <nav className="flex flex-wrap gap-4 text-sm">
-                  {nav.map((item) => (
+                  {links.map((item) => (
                     <Link
                       key={item.href}
                       href={item.href}
@@ -82,7 +84,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
                     Download template
                   </a>
                   <span className="hidden text-zinc-500 sm:inline">
-                    {user.name}
+                    {user.name} · {user.role}
                   </span>
                   <form method="POST" action="/api/auth/logout">
                     <button

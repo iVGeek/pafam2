@@ -7,10 +7,11 @@
 //   passwordHash : "scrypt:<salt hex>:<hash hex>"   (N=16384, r=8, p=1)
 //   session      : "<base64url payload>.<base64url hmac-sha256 signature>"
 //
-// The session is stateless: an HMAC-signed {uid, exp} payload. Revoking access
-// is done by changing the user's passwordHash or deactivating the account —
-// though note a signed session does not consult the DB on every request, so
-// deactivation takes effect once the session expires or the app is restarted.
+// The session is stateless: an HMAC-signed {uid, role, exp} payload. Revoking
+// access is done by changing the user's passwordHash or deactivating the
+// account — though note a signed session does not consult the DB on every
+// request, so deactivation takes effect once the session expires or the app is
+// restarted. Changing a user's role likewise takes effect at next sign-in.
 
 import {
   createHmac,
@@ -18,6 +19,7 @@ import {
   scryptSync,
   timingSafeEqual,
 } from "crypto";
+import type { Role } from "@prisma/client";
 
 export const SESSION_COOKIE = "pafam_session";
 export const SESSION_DAYS = 30;
@@ -81,10 +83,14 @@ function b64url(buf: Buffer): string {
     .replace(/=+$/, "");
 }
 
-export function signSession(uid: string): string {
+export function signSession(uid: string, role: Role): string {
   const payload = b64url(
     Buffer.from(
-      JSON.stringify({ uid, exp: Date.now() + SESSION_DAYS * 86_400_000 }),
+      JSON.stringify({
+        uid,
+        role,
+        exp: Date.now() + SESSION_DAYS * 86_400_000,
+      }),
     ),
   );
   const signature = b64url(
@@ -95,6 +101,7 @@ export function signSession(uid: string): string {
 
 export function verifySession(token: string | undefined | null): {
   uid: string;
+  role: Role;
 } | null {
   if (!token) return null;
   // Fail closed: any error (including a missing AUTH_SECRET) means "no session"
@@ -116,13 +123,33 @@ export function verifySession(token: string | undefined | null): {
       payload.replace(/-/g, "+").replace(/_/g, "/"),
       "base64",
     ).toString("utf8");
-    const data = JSON.parse(json) as { uid?: unknown; exp?: unknown };
+    const data = JSON.parse(json) as {
+      uid?: unknown;
+      role?: unknown;
+      exp?: unknown;
+    };
     if (typeof data.uid !== "string" || typeof data.exp !== "number") return null;
     if (data.exp < Date.now()) return null;
-    return { uid: data.uid };
+    // A session without a role is from before role-based access existed; treat
+    // it as no session rather than guessing (fail closed).
+    if (!isRole(data.role)) return null;
+    return { uid: data.uid, role: data.role };
   } catch {
     return null;
   }
+}
+
+const ROLES: readonly string[] = [
+  "ADMIN",
+  "MANAGER",
+  "PURCHASING",
+  "SALES",
+  "ACCOUNTS",
+  "WAREHOUSE",
+];
+
+function isRole(value: unknown): value is Role {
+  return typeof value === "string" && ROLES.includes(value);
 }
 
 export const COOKIE_OPTIONS = {

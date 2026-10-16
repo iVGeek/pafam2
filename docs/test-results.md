@@ -29,7 +29,8 @@ Run against a migrated, seeded database.
 | Inventory analytics | `npm run db:verify-inventory-analytics` | PASS | §11.1 available-to-sell = usable on hand − reservations; §18 aging buckets 0-30 / 31-90 / 91-180 / 181-365 / 365+. |
 | KPIs | `npm run db:verify-kpis` | PASS | §18 KPI set with named owners; KPIs without inputs report *pending*, never zero. |
 | Auto-clean | `npm run db:verify-clean` | PASS | Header aliasing, value cleaning (oz/L→ml, thousands separators, parenthesised negatives, booleans, barcode separators, mojibake), CLEANED INFO audit issues, cleaned-workbook re-export. |
-| Auth | `npm run verify:auth` | PASS | Login, scrypt hashing, signed session cookie, tampered/expired cookie rejected, **fail-closed** behaviour, unauthenticated requests redirect to `/login`. |
+| Auth | `npm run verify:auth` | PASS | Login, scrypt hashing, signed session cookie (uid + role), tampered/forged/expired cookie rejected, **fail-closed** behaviour, unauthenticated requests redirect to `/login`, and §19 role access (`canAccess` / `areaForPath`: per-area allow/deny, admin-only unclassified routes, settings read-open/write-restricted). |
+| Role access (live) | manual smoke | PASS | Signed in as a `SALES` user: `/` and `/notes` → 200; `/fx` page → 307 to `/forbidden?next=/fx`; `/api/audit` and `POST /api/orders` → 403 with `{"role":"SALES"}`; header nav omits Exposure, Opportunities, Orders, Inventory, KPIs, Uploads, Exceptions, FX and Audit. |
 | Compare | `npm run verify:compare` | PASS | R6/R7 price-list comparison: added / removed / changed / same, price-change % (same currency) and USD change % (cross-currency), quantity change. |
 | Orders | `npm run verify:orders` | PASS | R5/R2 order creation in whole cases, Excel export, **PDF and Excel PFI parsing**, variance classification (match / short / over / missing / absent). |
 | Product costing | `npm run verify:product-costing` | PASS | R1/R3 landed-cost ranking by supplier, best supplier, break-even and suggested price; **offers with no FX rate rank last, never above a known rate**. |
@@ -133,7 +134,8 @@ Documented in `docs/data-dictionary.md` §12 and the README:
   totals are not yet de-duplicated.
 - **Forecasts** (§12) — deliberately deferred until enough reliable history
   exists.
-- Per-**role** access enforcement (§19) — the `Role` field exists but is not
-  enforced; every signed-in user currently has full access.
+
+§19 per-role access **is** enforced (see the Auth and Role-access rows in §1) and
+so is no longer a gap.
 
 These are expected to be absent, not failures.

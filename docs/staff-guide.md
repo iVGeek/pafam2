@@ -209,7 +209,39 @@ Go to **Inventory**.
 
 ---
 
-## 11. Known limitations
+## 11. Roles and access
+
+Every account has one role, and the role decides which parts of the platform the
+account can open. The role is shown next to your name in the header. If you open
+something your role does not cover you get a **Not permitted** page (or a 403 on
+an API call) that names your role and lists what you *can* open.
+
+| Role | Owns / can open |
+| --- | --- |
+| **ADMIN** | Everything, including user accounts. |
+| **MANAGER** | Everything — approves master-data exceptions and buying limits. |
+| **PURCHASING** | Dashboard, Market (offers, suppliers, products, pricing, trends, compare), Purchasing (orders, imports, exceptions, exposure, opportunities), Trading (deals, calculator, alerts), Inventory. |
+| **SALES** | Dashboard, Market, Trading, and Sales (customers, demand, notes, quotes, tasks). Does **not** see internal inventory, FX, KPIs or the audit log. |
+| **ACCOUNTS** | Dashboard, Trading, and Accounts (FX, KPIs, audit log). |
+| **WAREHOUSE** | Dashboard and Inventory only. |
+
+Notes:
+
+- **Customer notes and commercial costs are restricted** to the roles above
+  (§19): only SALES/MANAGER/ADMIN reach notes, customers, demand and quotes;
+  only ACCOUNTS/MANAGER/ADMIN reach FX, KPIs and the audit log.
+- **Writing thresholds is manager territory.** Reading settings is open to
+  everyone; changing minimum margins, exposure caps, alert thresholds or KPI
+  owners is limited to ADMIN, MANAGER and ACCOUNTS.
+- Changing a user's role takes effect **the next time they sign in** — the role
+  is part of their signed session.
+- New routes that haven't been classified are admin-only by default (fail
+  closed), not open.
+- Any unclassified area denies by default rather than allowing by default.
+
+---
+
+## 12. Known limitations
 
 Be aware these are not modelled yet — do not expect the system to compute them:
 
@@ -222,13 +254,10 @@ Be aware these are not modelled yet — do not expect the system to compute them
   not yet linked into a single pool; treat cross-broker totals with care.
 - **Forecasts** — deliberately not produced until enough reliable history
   exists.
-- **Roles** — the `Role` field exists but access is not yet enforced per role;
-  every signed-in user currently has full access. Restrict who has an account
-  until roles are switched on.
 
 ---
 
-## 12. Getting help
+## 13. Getting help
 
 - Every screen links to its data. If a number looks wrong, check the underlying
   record and the **Audit** log first.
