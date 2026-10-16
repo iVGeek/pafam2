@@ -29,6 +29,7 @@ const nav = [
   { href: "/deals", label: "Deals" },
   { href: "/quotes", label: "Quotes" },
   { href: "/orders", label: "Orders" },
+  { href: "/calculator", label: "CP/SP" },
   { href: "/compare", label: "Compare" },
   { href: "/inventory", label: "Inventory" },
   { href: "/demands", label: "Demand" },

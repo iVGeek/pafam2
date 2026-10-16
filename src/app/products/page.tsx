@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import Link from "next/link";
 import { NewProductForm } from "./new-product-form";
 
 export const dynamic = "force-dynamic";
@@ -53,7 +54,11 @@ export default async function ProductsPage() {
                   key={p.id}
                   className="border-t border-zinc-100 dark:border-zinc-800"
                 >
-                  <td className="px-4 py-2 font-mono text-xs">{p.internalSku}</td>
+                  <td className="px-4 py-2 font-mono text-xs">
+                    <Link href={`/products/${p.id}`} className="font-medium hover:underline">
+                      {p.internalSku}
+                    </Link>
+                  </td>
                   <td className="px-4 py-2 font-mono text-xs">
                     {p.gtin14 ?? "—"}
                   </td>

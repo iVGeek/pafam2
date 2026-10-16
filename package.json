@@ -22,6 +22,7 @@
     "verify:auth": "tsx scripts/verify-auth.ts",
     "verify:compare": "tsx scripts/verify-compare.ts",
     "verify:orders": "tsx scripts/verify-orders.ts",
+    "verify:product-costing": "tsx scripts/verify-product-costing.ts",
     "postinstall": "prisma generate",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate deploy",
