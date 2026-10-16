@@ -26,6 +26,7 @@
     "verify:compare": "tsx scripts/verify-compare.ts",
     "verify:orders": "tsx scripts/verify-orders.ts",
     "verify:product-costing": "tsx scripts/verify-product-costing.ts",
+    "railway:setup": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/railway-setup.ps1",
     "postinstall": "prisma generate",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate deploy",
