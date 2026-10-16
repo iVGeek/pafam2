@@ -1,11 +1,21 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { COOKIE_OPTIONS, SESSION_COOKIE, signSession, verifyPassword } from "@/lib/auth";
+import { authConfigured, COOKIE_OPTIONS, SESSION_COOKIE, signSession, verifyPassword } from "@/lib/auth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
+  if (!authConfigured()) {
+    return NextResponse.json(
+      {
+        error:
+          "Server authentication is not configured (AUTH_SECRET is missing). Set it and restart.",
+      },
+      { status: 503 },
+    );
+  }
+
   let body: { email?: unknown; password?: unknown };
   try {
     body = await request.json();

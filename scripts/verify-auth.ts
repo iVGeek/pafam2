@@ -11,6 +11,7 @@ import {
   verifyPassword,
   signSession,
   verifySession,
+  authConfigured,
 } from "../src/lib/auth";
 
 let failures = 0;
@@ -18,6 +19,8 @@ function assert(label: string, ok: boolean) {
   if (!ok) failures++;
   console.log(`${ok ? "PASS" : "FAIL"}  ${label}`);
 }
+
+assert("auth is configured (AUTH_SECRET present)", authConfigured());
 
 // --- Passwords ---
 const hash = hashPassword("s3cret-password");

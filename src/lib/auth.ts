@@ -32,6 +32,16 @@ function secret(): string {
   return value.trim();
 }
 
+/** True when a session secret is configured. */
+export function authConfigured(): boolean {
+  try {
+    secret();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 // --- Passwords -------------------------------------------------------------
 
 export function hashPassword(password: string): string {
@@ -87,19 +97,21 @@ export function verifySession(token: string | undefined | null): {
   uid: string;
 } | null {
   if (!token) return null;
-  const cut = token.lastIndexOf(".");
-  if (cut <= 0) return null;
-  const payload = token.slice(0, cut);
-  const signature = token.slice(cut + 1);
-
-  const expected = b64url(
-    createHmac("sha256", secret()).update(payload).digest(),
-  );
-  const a = Buffer.from(signature);
-  const b = Buffer.from(expected);
-  if (a.length !== b.length || !timingSafeEqual(a, b)) return null;
-
+  // Fail closed: any error (including a missing AUTH_SECRET) means "no session"
+  // rather than a server crash.
   try {
+    const cut = token.lastIndexOf(".");
+    if (cut <= 0) return null;
+    const payload = token.slice(0, cut);
+    const signature = token.slice(cut + 1);
+
+    const expected = b64url(
+      createHmac("sha256", secret()).update(payload).digest(),
+    );
+    const a = Buffer.from(signature);
+    const b = Buffer.from(expected);
+    if (a.length !== b.length || !timingSafeEqual(a, b)) return null;
+
     const json = Buffer.from(
       payload.replace(/-/g, "+").replace(/_/g, "/"),
       "base64",
