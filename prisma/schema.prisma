@@ -50,6 +50,13 @@ enum UploadStatus {
   DUPLICATE
 }
 
+// How reliably the offers in a pool describe one physical parcel of stock (§11.1).
+enum PoolStatus {
+  CONFIRMED // owner and lot known; offers are one physical pool
+  POSSIBLE // ownership uncertain; offers may or may not be the same stock
+  UNVERIFIED // no ownership info; cannot be pooled
+}
+
 enum UploadRowStatus {
   OK
   EXCEPTION
@@ -64,15 +71,15 @@ enum IssueSeverity {
 
 // A person who can act on the system. Role drives access (see §19).
 model AppUser {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  name      String
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String
   // scrypt hash: "scrypt:<salt hex>:<hash hex>". Null until a password is set.
   passwordHash String?
-  role      Role     @default(PURCHASING)
-  active    Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  role         Role     @default(PURCHASING)
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 }
 
 // Product master. One row per internally-recognised sellable product.
@@ -100,6 +107,7 @@ model Product {
   marketPrices    MarketPrice[]
   noteExtractions NoteExtraction[]
   orderLines      OrderLine[]
+  stockPools      StockPool[]
 
   @@index([brand, fragranceName])
 }
@@ -147,8 +155,9 @@ model StockOwner {
   notes     String?
   createdAt DateTime @default(now())
 
-  lots   Lot[]
-  offers Offer[]
+  lots       Lot[]
+  offers     Offer[]
+  stockPools StockPool[]
 }
 
 model Lot {
@@ -165,6 +174,29 @@ model Lot {
   @@unique([stockOwnerId, lotReference])
 }
 
+// One physical parcel of supplier stock (§11.1). Several brokers/suppliers can
+// offer the same owner's lot; those offers link to one pool so the quantity is
+// counted once instead of summed. Offers with no ownership information stay
+// UNVERIFIED and are shown separately rather than pooled.
+model StockPool {
+  id           String     @id @default(cuid())
+  productId    String?
+  stockOwnerId String?
+  lotReference String?
+  label        String
+  status       PoolStatus @default(CONFIRMED)
+  notes        String?
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  product    Product?    @relation(fields: [productId], references: [id])
+  stockOwner StockOwner? @relation(fields: [stockOwnerId], references: [id])
+  offers     Offer[]
+
+  @@index([productId])
+  @@index([stockOwnerId])
+}
+
 // One row per supplier offer observation (dated; never overwrites history).
 model Offer {
   id      String      @id @default(cuid())
@@ -175,6 +207,7 @@ model Offer {
   productId    String? // null until matched
   stockOwnerId String?
   lotId        String?
+  poolId       String? // physical stock pool this offer belongs to (§11.1)
 
   // --- Source and dates ---
   listDate              DateTime?
@@ -241,6 +274,7 @@ model Offer {
   product    Product?    @relation(fields: [productId], references: [id])
   stockOwner StockOwner? @relation(fields: [stockOwnerId], references: [id])
   lot        Lot?        @relation(fields: [lotId], references: [id])
+  pool       StockPool?  @relation(fields: [poolId], references: [id])
   sourceFile UploadFile? @relation(fields: [sourceFileId], references: [id])
   uploadRows UploadRow[]
   deals      Deal[]
@@ -250,6 +284,7 @@ model Offer {
   @@index([listDate])
   @@index([status])
   @@index([originalCode])
+  @@index([poolId])
 }
 
 // Upload audit log. Original file + hash + version retained.

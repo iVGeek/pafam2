@@ -159,7 +159,6 @@ Deliberately not yet implemented, and documented as such:
 - Financing rates and daily funding balances (§8.4).
 - Supplier **on-time delivery, fill rate and claims** (§18) — shown as *pending*
   on the scorecard until goods-receipt and delivery-date records exist.
-- Duplicate-supply **stock pooling** across brokers (§11.1).
 - **Forecasts** (§12) — deferred until enough reliable history exists, as the
   brief requires.
 

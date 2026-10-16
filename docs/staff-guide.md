@@ -188,6 +188,7 @@ Go to **Inventory**.
 | **Trends** | 7/30/90/180-day ask prices and landed costs: min, median, range and number of independent stock owners. Supplier asks, our purchases, our wholesale sales, customer targets and public retail are **separate series**. |
 | **Compare** | Diff two supplier price lists or offers — added, removed, changed and unchanged lines, in USD. |
 | **Products** | Product master, and per product the ranked landed cost by supplier with best supplier, break-even and suggested price. |
+| **Supply** | Observed available supply, deduplicated: each owner's lot counted once even when several brokers list it. Firm, indicative, incoming and on-request kept apart; unknown ownership shown as a range. |
 | **KPIs** | Quote conversion, lost-sale reasons, realised vs expected margin, fill rate, repeat purchases, overdue debt, cash deployment, exposure, stock turn. Each has a **named owner**. KPIs whose inputs don't exist yet are shown as **pending**, never as zero. |
 | **Alerts** | Configurable thresholds by brand or SKU; each alert carries evidence and a suggested action. |
 | **Audit** | Who changed what, when, with before/after values. |
@@ -250,8 +251,6 @@ Be aware these are not modelled yet — do not expect the system to compute them
 - **Financing rates and daily funding balances.**
 - **Supplier on-time delivery, fill rate and claims** — these show as *pending*
   on the supplier scorecard until goods-receipt and delivery-date records exist.
-- **Duplicate supply stock pooling** — two brokers offering one owner's lot are
-  not yet linked into a single pool; treat cross-broker totals with care.
 - **Forecasts** — deliberately not produced until enough reliable history
   exists.
 

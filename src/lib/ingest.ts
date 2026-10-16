@@ -7,6 +7,7 @@ import {
   UploadStatus,
   UploadRowStatus,
   IssueSeverity,
+  PoolStatus,
 } from "@prisma/client";
 import { prisma } from "./prisma";
 import { parseOffersWorkbook } from "./excel";
@@ -213,6 +214,12 @@ export async function importOffersWorkbook(
 
     const productId = await findProductId(prisma, v);
 
+    // Group this offer into a physical stock pool (§11.1) so several brokers
+    // offering the same owner's lot are counted once, not summed.
+    const lotRef =
+      v.normalized.batchOrLotRef ?? v.normalized.uniqueLotReference ?? null;
+    const pool = await resolveStockPool(prisma, productId, stockOwner, lotRef);
+
     if (!productId && (v.originalCode || v.internalSku)) {
       summary.unmatchedRows++;
       await prisma.validationIssue.create({
@@ -275,6 +282,7 @@ export async function importOffersWorkbook(
         supplierId: supplier.id,
         productId,
         stockOwnerId: stockOwner?.id ?? null,
+        poolId: pool?.id ?? null,
         listDate: v.normalized.listDate,
         validUntil: v.normalized.validUntil,
         lastStockConfirmation: v.normalized.lastStockConfirmation,
@@ -372,6 +380,39 @@ export async function importOffersWorkbook(
   summary.status = status;
   summary.message = message;
   return summary;
+}
+
+// Resolve (or create) the physical stock pool an offer belongs to (§11.1).
+// A known owner + lot is a CONFIRMED pool; a known owner without a lot is
+// POSSIBLE (the same owner may hold several parcels). No owner means the offer
+// is left unpooled and reported separately as possible overlap.
+async function resolveStockPool(
+  db: Db,
+  productId: string | null,
+  stockOwner: { id: string; name: string } | null,
+  lotReference: string | null,
+): Promise<{ id: string; status: PoolStatus } | null> {
+  if (!stockOwner) return null;
+  const status = lotReference ? PoolStatus.CONFIRMED : PoolStatus.POSSIBLE;
+  const existing = await db.stockPool.findFirst({
+    where: { productId, stockOwnerId: stockOwner.id, lotReference },
+    select: { id: true, status: true },
+  });
+  if (existing) return { id: existing.id, status: existing.status };
+  const label = lotReference
+    ? `${stockOwner.name} · ${lotReference}`
+    : `${stockOwner.name} (lot unknown)`;
+  const created = await db.stockPool.create({
+    data: {
+      productId,
+      stockOwnerId: stockOwner.id,
+      lotReference,
+      label,
+      status,
+    },
+    select: { id: true, status: true },
+  });
+  return { id: created.id, status: created.status };
 }
 
 async function findProductId(

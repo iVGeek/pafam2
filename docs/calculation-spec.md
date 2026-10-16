@@ -244,7 +244,41 @@ never ranked above one with a known rate** — unknown is not treated as free.
 
 ---
 
-## 12. Acceptance check (§9 illustration)
+## 12. Observed supply de-duplication (§11.1, `src/lib/supply.ts`)
+
+Several brokers often list **one owner's lot**. Counting each listing would
+double-count the same physical parcel, so active offers are grouped into
+**pools** and each pool is counted once.
+
+Grouping key (highest confidence first):
+
+1. the stored `poolId`, if the offer was linked to a pool on import;
+2. else `(product, stock owner, lot reference)`;
+3. offers with **no** owner fall back to `(product, supplier)` and are kept
+   **`UNVERIFIED`** (never mixed into confirmed totals).
+
+Pool quantity is the **reported parcel** (latest, else largest quantity), not the
+sum across brokers. Because one pool can sit in several countries, **location is
+not treated as a separate lot** — US + FR is still one parcel.
+
+| Confidence | When | How it is reported |
+| --- | --- | --- |
+| `CONFIRMED` | owner **and** lot known | counted once in confirmed totals |
+| `POSSIBLE` | owner known, lot unknown | separate **possible-overlap** range (may overlap other pools) |
+| `UNVERIFIED` | no ownership information | separate **unverified** range |
+
+Possible-overlap and unverified quantities are shown as **ranges and never summed
+into the confirmed total**. Offers are bucketed by availability — **FIRM,
+INDICATIVE, INCOMING, ON_REQUEST** — and offers older than the freshness window
+(default **14 days**) are excluded from active totals.
+
+The same de-duplicated supply feeds the demand-vs-supply alert
+(`src/lib/alerts.ts`) and the supplier scorecard's confirmed-availability input
+(`src/lib/suppliers.ts`).
+
+---
+
+## 13. Acceptance check (§9 illustration)
 
 The brief's worked example must reconcile exactly. For **1,000 bottles at $30**,
 inbound costs **$3,000**, sell at **$40**, outbound **$2,000**, deployed capital
@@ -265,7 +299,7 @@ engine.
 
 ---
 
-## 13. What is deliberately not modelled yet
+## 14. What is deliberately not modelled yet
 
 - **XIRR / dated cash flows / partial payments** (§8.4).
 - **Financing rate, funded dates, daily funding balances** (§8.4).

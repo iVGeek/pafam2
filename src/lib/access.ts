@@ -63,6 +63,7 @@ const AREA_PREFIXES: Record<Exclude<Area, "dashboard" | "auth" | "admin">, reado
   market: [
     "/offers",
     "/suppliers",
+    "/supply",
     "/products",
     "/pricing",
     "/trends",

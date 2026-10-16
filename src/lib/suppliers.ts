@@ -94,6 +94,7 @@ export async function getSupplierScorecard(now = new Date()): Promise<SupplierSc
     prisma.offer.findMany({
       select: {
         supplierId: true,
+        productId: true,
         status: true,
         price: true,
         currency: true,
@@ -103,6 +104,12 @@ export async function getSupplierScorecard(now = new Date()): Promise<SupplierSc
         createdAt: true,
         lastStockConfirmation: true,
         availableQuantity: true,
+        // To avoid double-counting a supplier's own duplicate listings of one
+        // owner's lot (§11.1), supply is deduplicated by stock pool below.
+        poolId: true,
+        stockOwnerId: true,
+        batchOrLotRef: true,
+        uniqueLotReference: true,
         authenticityDocs: true,
         usSuitability: true,
         paymentTerms: true,
@@ -188,7 +195,17 @@ export async function getSupplierScorecard(now = new Date()): Promise<SupplierSc
     const leadTimes = active
       .map((o) => o.leadTimeDays)
       .filter((d): d is number => d !== null && d > 0);
-    const supply = active.reduce((sum, o) => sum + (o.availableQuantity === null ? 0 : Number(o.availableQuantity)), 0);
+    // Deduplicate this supplier's supply by physical stock pool (§11.1): one
+    // owner's lot listed more than once must count once, not once per listing.
+    const poolQty = new Map<string, number>();
+    for (const o of active) {
+      if (o.availableQuantity === null) continue;
+      const q = Number(o.availableQuantity);
+      const lot = (o.batchOrLotRef ?? o.uniqueLotReference ?? "").trim();
+      const key = o.poolId ?? `${o.productId ?? "?"}|${o.stockOwnerId ?? "?"}|${lot}`;
+      poolQty.set(key, Math.max(poolQty.get(key) ?? 0, q));
+    }
+    const supply = [...poolQty.values()].reduce((sum, v) => sum + v, 0);
     const dealAgg = dealsBySupplier.get(s.id) ?? { count: 0, contribution: 0 };
 
     return {

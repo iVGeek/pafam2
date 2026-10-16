@@ -84,13 +84,32 @@ A physical stock lot under an owner.
 `stockOwnerId`, `lotReference`, `manufactureDate`, `uniqueLotRef`.
 Unique on `(stockOwnerId, lotReference)`.
 
+### `StockPool` — one physical parcel of supplier stock (§11.1)
+
+Several brokers can offer **one owner's lot**. Those offers link to a single
+pool so the parcel is counted **once**, never summed.
+
+| Field | Notes |
+| --- | --- |
+| `productId?` | the SKU the pool is for (null until the offer is matched) |
+| `stockOwnerId?` | the owner, when known |
+| `lotReference?` | the lot/batch reference, when known |
+| `label` | human label, e.g. `Owner · LOT-A123` |
+| `status` | enum `PoolStatus`: `CONFIRMED` (owner + lot known), `POSSIBLE` (owner known, lot unknown), `UNVERIFIED` (no ownership info) |
+| `notes?` | free text |
+
+Offers created on import with a known owner and lot are linked automatically to a
+`CONFIRMED` pool; a known owner without a lot yields a `POSSIBLE` pool; offers
+with no owner are left unpooled and reported separately as unverified. See
+`docs/calculation-spec.md` for how observed supply deduplicates.
+
 ### `Offer` — one dated supplier offer observation
 
 Grouped as in the Excel template:
 
 | Group | Fields |
 | --- | --- |
-| Identity | `status` (ACTIVE/STALE/EXPIRED), `offerId`, `supplierId`, `productId?`, `stockOwnerId?`, `lotId?` |
+| Identity | `status` (ACTIVE/STALE/EXPIRED), `offerId`, `supplierId`, `productId?`, `stockOwnerId?`, `lotId?`, `poolId?` |
 | Source & dates | `listDate`, `validUntil`, `lastStockConfirmation`, `sourceFileId`, `sourceRow` |
 | Product (as supplied) | `originalCode`, `originalCodeType`, `brand`, `fragranceName`, `concentration`, `sizeMl`, `genderOrCategory`, `setContents` |
 | Packaging & condition | `packagingLevel`, `hasCap`, `hasBox`, `sealed`, `damageStatus`, `batchOrLotRef`, `manufactureDate` |
@@ -335,6 +354,7 @@ separator characters, and common mojibake. Every change is recorded as an
 | `CodeType` | EAN, UPC, GTIN |
 | `PackagingLevel` | UNIT, CASE, TESTER, GIFT_SET, REFILL, DAMAGED, UNKNOWN |
 | `OfferStatus` | ACTIVE, STALE, EXPIRED |
+| `PoolStatus` | CONFIRMED, POSSIBLE, UNVERIFIED |
 | `UploadStatus` | PENDING, VALIDATED, FAILED, DUPLICATE |
 | `UploadRowStatus` | OK, EXCEPTION, DUPLICATE |
 | `IssueSeverity` | ERROR, WARNING, INFO |
@@ -363,4 +383,3 @@ These fields/tables are **not yet implemented** and are intentionally absent:
 - Financing rate / funded dates / daily funding balances (§8.4).
 - Supplier `promisedDate` / `actualDeliveryDate` and a claims log (§18) — so
   on-time delivery and claims show as *pending* on the supplier scorecard.
-- Stock-pool linkage for duplicate supply from multiple brokers (§11.1).

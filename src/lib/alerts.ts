@@ -5,6 +5,7 @@
 import { prisma } from "./prisma";
 import { getTradingSettings } from "./deals";
 import { getExposure } from "./exposure";
+import { getConfirmedSupplyByProduct } from "./supply";
 import { usd, qty } from "./format";
 
 export type AlertSeverity = "high" | "warn" | "info";
@@ -259,11 +260,9 @@ export async function computeAlerts(now = new Date()): Promise<Alert[]> {
     if (!d.productId) continue;
     openByProduct.set(d.productId, (openByProduct.get(d.productId) ?? 0) + (d.quantity ? Number(d.quantity) : 0));
   }
-  const supplyByProduct = new Map<string, number>();
-  for (const o of activeOffers) {
-    if (!o.productId || o.availableQuantity === null) continue;
-    supplyByProduct.set(o.productId, (supplyByProduct.get(o.productId) ?? 0) + Number(o.availableQuantity));
-  }
+  // Deduplicated confirmed supply: several brokers offering one owner's lot
+  // count once, not once each (§11.1).
+  const supplyByProduct = await getConfirmedSupplyByProduct(now);
   for (const [productId, demandQty] of openByProduct) {
     if (demandQty <= 0) continue;
     const supply = supplyByProduct.get(productId) ?? 0;
@@ -277,7 +276,7 @@ export async function computeAlerts(now = new Date()): Promise<Alert[]> {
         detail: `Approved demand ${qty(demandQty)} vs confirmed available ${qty(supply)} units.`,
         evidence: [
           `Approved open demand ${qty(demandQty)} units`,
-          `Confirmed available across active offers ${qty(supply)} units`,
+          `Confirmed available (deduplicated stock pools) ${qty(supply)} units`,
         ],
         suggestedAction: supply === 0
           ? "Source new confirmed stock; there is no active confirmed supply."
