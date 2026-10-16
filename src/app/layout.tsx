@@ -44,6 +44,7 @@ const nav = [
   { href: "/exceptions", label: "Exceptions" },
   { href: "/products", label: "Products" },
   { href: "/fx", label: "FX" },
+  { href: "/audit", label: "Audit" },
 ] as const;
 
 export default async function RootLayout({ children }: LayoutProps<"/">) {
