@@ -165,3 +165,19 @@ Deliberately not yet implemented, and documented as such:
 
 See [`docs/requirements.md`](docs/requirements.md) for the full brief and
 `docs/data-dictionary.md` §12 for the field-level version of this list.
+
+---
+
+## Accepted advisories
+
+`npm audit` reports one remaining high-severity advisory with **no patched
+release**: `braces` (CVE-2026-93687, stack-exhaustion DoS via deeply nested
+patterns; advisory GHSA-vfj7-8cjw-p6xm, affected `<= 3.0.3`, patched: none).
+
+It is reachable only through `eslint-config-next` → `@next/eslint-plugin-next` →
+`fast-glob` → `micromatch` → `braces`, i.e. **local lint tooling**. It is a
+devDependency, is not bundled into the Next.js server or client build, and is
+never reachable at runtime, so it cannot be triggered in a deployed instance.
+The other advisories reachable through the dependency tree (`uuid` via `exceljs`,
+`deepmerge-ts` via `prisma`) are forced to patched versions with `overrides` in
+`package.json`.
