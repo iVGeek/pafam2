@@ -21,6 +21,7 @@
     "db:verify-clean": "tsx scripts/verify-clean.ts",
     "verify:auth": "tsx scripts/verify-auth.ts",
     "verify:compare": "tsx scripts/verify-compare.ts",
+    "verify:orders": "tsx scripts/verify-orders.ts",
     "postinstall": "prisma generate",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate deploy",
@@ -34,6 +35,7 @@
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "tsx": "^4.23.15",
+    "unpdf": "^1.9.0",
     "zod": "^4.6.7"
   },
   "devDependencies": {

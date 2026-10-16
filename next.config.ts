@@ -5,7 +5,7 @@ const nextConfig: NextConfig = {
   // Trading data must always be read fresh from Postgres, so use the classic
   // dynamic-rendering model rather than Cache Components.
   cacheComponents: false,
-  serverExternalPackages: ["@prisma/client", "exceljs"],
+  serverExternalPackages: ["@prisma/client", "exceljs", "unpdf"],
   turbopack: {
     root: process.cwd(),
     rules: {

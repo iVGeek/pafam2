@@ -99,6 +99,7 @@ model Product {
   inventory       InventoryItem[]
   marketPrices    MarketPrice[]
   noteExtractions NoteExtraction[]
+  orderLines      OrderLine[]
 
   @@index([brand, fragranceName])
 }
@@ -132,6 +133,8 @@ model Supplier {
   offers  Offer[]
   uploads UploadFile[]
   deals   Deal[]
+
+  purchaseOrders PurchaseOrder[]
 
   @@index([name])
 }
@@ -829,4 +832,94 @@ model Setting {
   value     Json
   updatedBy String?
   updatedAt DateTime @updatedAt
+}
+
+enum OrderStatus {
+  DRAFT
+  SENT
+  CONFIRMED
+  RECEIVED
+  CANCELLED
+}
+
+// A purchase order we place with a supplier. Quantities are whole boxes.
+model PurchaseOrder {
+  id         String      @id @default(cuid())
+  reference  String      @unique
+  supplierId String
+  status     OrderStatus @default(DRAFT)
+  currency   String? // currency the order is priced in
+  fxRate     Decimal?    @db.Decimal(18, 8) // USD per 1 unit of currency
+  incoterm   String?
+  notes      String?
+  createdBy  String?
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+
+  supplier     Supplier      @relation(fields: [supplierId], references: [id])
+  lines        OrderLine[]
+  pfiDocuments PfiDocument[]
+
+  @@index([supplierId])
+  @@index([status])
+}
+
+// One line on a purchase order. Quantity is cases * unitsPerCase (whole boxes).
+model OrderLine {
+  id             String         @id @default(cuid())
+  orderId        String
+  productId      String?
+  originalCode   String?
+  brand          String?
+  fragranceName  String?
+  concentration  String?
+  sizeMl         Int?
+  packagingLevel PackagingLevel @default(UNIT)
+  unitsPerCase   Int            @default(1)
+  cases          Int            @default(0)
+  units          Int            @default(0)
+  unitCost       Decimal?       @db.Decimal(14, 4)
+  currency       String?
+  notes          String?
+  createdAt      DateTime       @default(now())
+
+  order   PurchaseOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product Product?      @relation(fields: [productId], references: [id])
+
+  @@index([orderId])
+  @@index([productId])
+}
+
+// A supplier proforma invoice (PFI) attached to an order, in PDF or Excel form.
+model PfiDocument {
+  id         String   @id @default(cuid())
+  orderId    String
+  filename   String
+  sourceType String // "PDF" | "EXCEL"
+  lineCount  Int      @default(0)
+  createdBy  String?
+  createdAt  DateTime @default(now())
+
+  order PurchaseOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  lines PfiLine[]
+
+  @@index([orderId])
+}
+
+// A line extracted from a PFI, kept as-is, then compared against the order.
+model PfiLine {
+  id            String   @id @default(cuid())
+  pfiDocumentId String
+  originalCode  String?
+  brand         String?
+  name          String?
+  unitPrice     Decimal? @db.Decimal(14, 4)
+  currency      String?
+  quantity      Decimal? @db.Decimal(18, 3)
+  unitsPerCase  Int?
+  rawText       String?
+
+  pfiDocument PfiDocument @relation(fields: [pfiDocumentId], references: [id], onDelete: Cascade)
+
+  @@index([pfiDocumentId])
 }
