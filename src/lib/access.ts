@@ -99,7 +99,7 @@ const AREA_PREFIXES: Record<Exclude<Area, "dashboard" | "auth" | "admin">, reado
     "/api/quotes",
   ],
   accounts: ["/fx", "/kpis", "/audit", "/api/fx", "/api/audit"],
-  warehouse: ["/inventory", "/api/inventory"],
+  warehouse: ["/inventory", "/claims", "/api/inventory", "/api/claims"],
 };
 
 // Reachable by every signed-in account regardless of role.

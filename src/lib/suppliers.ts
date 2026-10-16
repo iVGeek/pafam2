@@ -7,6 +7,7 @@
 // reader can see exactly why a supplier ranks where it does.
 
 import { prisma } from "./prisma";
+import { getSupplierDeliveryMetrics } from "./receipts";
 
 export type ScorecardDimension = {
   key: string;
@@ -41,6 +42,18 @@ export type SupplierScorecard = {
   wonDeals: number;
   wonContributionUsd: number;
 
+  // Delivery record (§18): measurable once goods receipts and claims exist.
+  receiptCount: number;
+  receiptsWithExpected: number;
+  fillRatePct: number | null;
+  onTimePct: number | null;
+  claimCount: number;
+  openClaimCount: number;
+  claimUnits: number;
+  claimAmountUsd: number;
+  /** 0-1 delivery component; null when nothing measurable is on record. */
+  deliveryScore: number | null;
+
   /** 0-100 composite of the *measurable* dimensions only. Null if unpriced. */
   score: number | null;
   rank: number | null;
@@ -53,7 +66,10 @@ export type SupplierScorecardResult = {
 };
 
 // Weights for the composite score. Documented so a manager can see the rule.
-const WEIGHTS = { cost: 0.5, freshness: 0.3, evidence: 0.2 } as const;
+// `delivery` only contributes when a supplier has receipts/claims on record, so
+// a supplier with no delivery history is scored on cost, freshness and evidence
+// alone (as before). See `getSupplierScorecard`.
+const WEIGHTS = { cost: 0.5, freshness: 0.3, evidence: 0.2, delivery: 0.3 } as const;
 const STALE_DAYS = 14;
 
 function median(values: number[]): number | null {
@@ -83,13 +99,13 @@ export const SCORECARD_DIMENSIONS: ScorecardDimension[] = [
   { key: "authenticity", label: "Authenticity evidence", measured: true, detail: "Share of active offers carrying authenticity documentation." },
   { key: "terms", label: "Payment terms", measured: true, detail: "Most common terms across the supplier's offers." },
   { key: "leadtime", label: "Lead time", measured: true, detail: "Median lead time across the supplier's offers." },
-  { key: "fillrate", label: "Fill rate", measured: false, detail: "Needs goods-receipt records (quantity ordered vs received)." },
-  { key: "ontime", label: "On-time delivery", measured: false, detail: "Needs promised vs actual delivery dates." },
-  { key: "claims", label: "Claims", measured: false, detail: "Needs a claims/returns log per supplier." },
+  { key: "fillrate", label: "Fill rate", measured: true, detail: "Units received vs units ordered across goods receipts; a supplier with no receipts shows as *pending*." },
+  { key: "ontime", label: "On-time delivery", measured: true, detail: "Share of receipts arriving on or before the promised date; needs receipts with a promised date." },
+  { key: "claims", label: "Claims", measured: true, detail: "Count and value of claims/returns raised against the supplier." },
 ];
 
 export async function getSupplierScorecard(now = new Date()): Promise<SupplierScorecardResult> {
-  const [suppliers, offers, deals, rates] = await Promise.all([
+  const [suppliers, offers, deals, rates, delivery] = await Promise.all([
     prisma.supplier.findMany({ orderBy: { name: "asc" } }),
     prisma.offer.findMany({
       select: {
@@ -121,6 +137,7 @@ export async function getSupplierScorecard(now = new Date()): Promise<SupplierSc
       select: { supplierId: true, dealContribution: true },
     }),
     prisma.fxRate.findMany({ select: { baseCurrency: true, rate: true, rateDate: true } }),
+    getSupplierDeliveryMetrics(),
   ]);
 
   const rateList = rates.map((r) => ({ base: r.baseCurrency, rate: Number(r.rate), date: r.rateDate }));
@@ -208,6 +225,23 @@ export async function getSupplierScorecard(now = new Date()): Promise<SupplierSc
     const supply = [...poolQty.values()].reduce((sum, v) => sum + v, 0);
     const dealAgg = dealsBySupplier.get(s.id) ?? { count: 0, contribution: 0 };
 
+    const dm = delivery.get(s.id);
+    // Delivery component: blend whatever is measurable. Missing pieces are
+    // ignored rather than assumed good. Null when there is no delivery history.
+    let deliveryScore: number | null = null;
+    if (dm && (dm.receiptCount > 0 || dm.claimCount > 0)) {
+      const parts: number[] = [];
+      if (dm.fillRatePct !== null) parts.push(Math.min(dm.fillRatePct, 100) / 100);
+      if (dm.onTimePct !== null) parts.push(Math.min(dm.onTimePct, 100) / 100);
+      // Claims: penalise proportionally to receipts (capped at 1 claim/receipt).
+      if (dm.receiptCount > 0) {
+        parts.push(1 - Math.min(dm.claimCount / dm.receiptCount, 1));
+      } else {
+        parts.push(1 - Math.min(dm.claimCount, 1));
+      }
+      deliveryScore = parts.reduce((s, p) => s + p, 0) / parts.length;
+    }
+
     return {
       supplierId: s.id,
       name: s.name,
@@ -230,6 +264,15 @@ export async function getSupplierScorecard(now = new Date()): Promise<SupplierSc
       paymentTerms: terms,
       wonDeals: dealAgg.count,
       wonContributionUsd: Math.round(dealAgg.contribution * 100) / 100,
+      receiptCount: dm?.receiptCount ?? 0,
+      receiptsWithExpected: dm?.receiptsWithExpected ?? 0,
+      fillRatePct: dm?.fillRatePct ?? null,
+      onTimePct: dm?.onTimePct ?? null,
+      claimCount: dm?.claimCount ?? 0,
+      openClaimCount: dm?.openClaimCount ?? 0,
+      claimUnits: dm?.claimUnits ?? 0,
+      claimAmountUsd: dm?.claimAmountUsd ?? 0,
+      deliveryScore,
       score: null,
       rank: null,
     };
@@ -246,9 +289,16 @@ export async function getSupplierScorecard(now = new Date()): Promise<SupplierSc
       const costScore = maxCost > minCost ? 1 - (cost - minCost) / (maxCost - minCost) : 1;
       const freshnessScore = s.stalePct === null ? 0 : 1 - s.stalePct / 100;
       const evidenceScore = s.authenticityPct === null ? 0 : s.authenticityPct / 100;
-      s.score = Math.round(
-        (WEIGHTS.cost * costScore + WEIGHTS.freshness * freshnessScore + WEIGHTS.evidence * evidenceScore) * 1000,
-      ) / 10;
+      // Delivery only counts when there is history; otherwise the score stays
+      // exactly as it was on cost, freshness and evidence alone.
+      const deliveryScore = s.deliveryScore ?? 0;
+      const totalWeight = WEIGHTS.cost + WEIGHTS.freshness + WEIGHTS.evidence + (s.deliveryScore === null ? 0 : WEIGHTS.delivery);
+      const weighted =
+        WEIGHTS.cost * costScore +
+        WEIGHTS.freshness * freshnessScore +
+        WEIGHTS.evidence * evidenceScore +
+        (s.deliveryScore === null ? 0 : WEIGHTS.delivery * deliveryScore);
+      s.score = Math.round((weighted / totalWeight) * 1000) / 10;
     }
     priced.sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
     priced.forEach((s, i) => {

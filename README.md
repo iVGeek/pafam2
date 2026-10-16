@@ -16,11 +16,11 @@ in **PostgreSQL**.
 | Area | Screens |
 | --- | --- |
 | **Data intake** | Uploads (Excel import, auto-clean, audit), Exceptions (validation queue), Products (master + barcode alias table), Template download |
-| **Trading engine** | Deals (full P&L), CP/SP calculator, Opportunities, Exposure, Pricing, Compare (diff two price lists), Orders + PFI variance |
+| **Trading engine** | Deals (full P&L), CP/SP calculator, Opportunities, Exposure, Pricing, Compare (diff two price lists), Orders + PFI variance, Goods receipts (fill rate, on-time) |
 | **Customers** | Customers, Demand, Notes (Plaud / reMarkable / manual), Tasks, Quotes |
 | **Intelligence** | Trends, Alerts, KPIs (with named owners), Dashboard |
-| **Own stock** | Inventory, aging buckets, reservations (no overselling) |
-| **Reference** | FX (dated rates), Suppliers (scorecard), Audit log, Login |
+| **Own stock** | Inventory, aging buckets, reservations (no overselling), Supplied stock pools (deduplicated) |
+| **Reference** | FX (dated rates), Suppliers (scorecard incl. fill rate / on-time / claims), Claims &amp; returns, Audit log, Login |
 
 ### Core rules the platform enforces
 
@@ -98,7 +98,7 @@ ADMIN_PASSWORD=<initial admin password>
 | `npm run db:seed` | Seed shared defaults (idempotent) |
 | `npm run db:generate` | Regenerate the Prisma client |
 | `npm run db:verify` | Run the core verification suite |
-| `npm run db:verify-*` | Targeted suites (pricing, alerts, demands, suppliers, exposure, opportunities, customer-pricing, inventory-analytics, kpis, clean) |
+| `npm run db:verify-*` | Targeted suites (pricing, alerts, demands, suppliers, exposure, opportunities, customer-pricing, inventory-analytics, kpis, clean, supply, receipts) |
 | `npm run verify:auth` | Auth / session / fail-closed checks |
 | `npm run verify:compare` | Price-list comparison checks |
 | `npm run verify:orders` | Order + PFI checks |
@@ -157,8 +157,6 @@ Deliberately not yet implemented, and documented as such:
 - Dated cash flows, partial payments and **XIRR** (brief §8.4) — cash return is
   currently approximated from a single cash-cycle-days figure.
 - Financing rates and daily funding balances (§8.4).
-- Supplier **on-time delivery, fill rate and claims** (§18) — shown as *pending*
-  on the scorecard until goods-receipt and delivery-date records exist.
 - **Forecasts** (§12) — deferred until enough reliable history exists, as the
   brief requires.
 

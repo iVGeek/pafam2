@@ -14,9 +14,10 @@ export default async function SuppliersPage() {
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Supplier scorecard</h1>
         <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-          Ranking is based on executable landed cost, confirmation freshness and authenticity
-          evidence — dimensions we can measure today. Cheapest price alone is not sufficient;
-          unavailable dimensions (fill rate, on-time delivery, claims) are listed below.
+          Ranking is based on executable landed cost, confirmation freshness, authenticity
+          evidence and — where receipts exist — fill rate, on-time delivery and claims. Cheapest
+          price alone is not sufficient; dimensions with no data yet are shown as *pending* and
+          do not affect the score.
         </p>
         <p className="mt-1 text-xs text-zinc-500">As of {asOf}</p>
       </div>
@@ -37,6 +38,9 @@ export default async function SuppliersPage() {
                 <th className="px-4 py-2 text-right">Stale</th>
                 <th className="px-4 py-2 text-right">Freshness</th>
                 <th className="px-4 py-2 text-right">Auth. evidence</th>
+                <th className="px-4 py-2 text-right">Fill rate</th>
+                <th className="px-4 py-2 text-right">On-time</th>
+                <th className="px-4 py-2 text-right">Claims</th>
                 <th className="px-4 py-2 text-right">Score (0-100)</th>
                 <th className="px-4 py-2">Payment terms</th>
               </tr>
@@ -44,7 +48,7 @@ export default async function SuppliersPage() {
             <tbody>
               {ranked.length === 0 ? (
                 <tr>
-                  <td colSpan={12} className="px-4 py-8 text-center text-zinc-500">
+                  <td colSpan={15} className="px-4 py-8 text-center text-zinc-500">
                     No priced active offers yet; scorecard cannot rank by landed cost.
                   </td>
                 </tr>
@@ -64,6 +68,19 @@ export default async function SuppliersPage() {
                     </td>
                     <td className="px-4 py-2 text-right tabular-nums">
                       {s.authenticityPct === null ? "—" : pct(s.authenticityPct)}
+                    </td>
+                    <td className="px-4 py-2 text-right tabular-nums">
+                      {s.fillRatePct === null ? <span className="text-zinc-400">pending</span> : pct(s.fillRatePct)}
+                    </td>
+                    <td className="px-4 py-2 text-right tabular-nums">
+                      {s.onTimePct === null ? <span className="text-zinc-400">pending</span> : pct(s.onTimePct)}
+                    </td>
+                    <td className="px-4 py-2 text-right tabular-nums">
+                      {s.claimCount === 0 ? (
+                        <span className="text-zinc-400">—</span>
+                      ) : (
+                        <span title={`${usd(s.claimAmountUsd)} claimed`}>{s.claimCount}</span>
+                      )}
                     </td>
                     <td className="px-4 py-2 text-right tabular-nums font-medium">{s.score ?? "—"}</td>
                     <td className="px-4 py-2 text-xs">{s.paymentTerms ?? "—"}</td>
@@ -89,6 +106,9 @@ export default async function SuppliersPage() {
                 <th className="px-4 py-2 text-right">Auth. %</th>
                 <th className="px-4 py-2 text-right">US suitable %</th>
                 <th className="px-4 py-2 text-right">Median lead time</th>
+                <th className="px-4 py-2 text-right">Fill rate</th>
+                <th className="px-4 py-2 text-right">On-time</th>
+                <th className="px-4 py-2 text-right">Claims</th>
                 <th className="px-4 py-2 text-right">Won deals</th>
                 <th className="px-4 py-2 text-right">Won contribution</th>
               </tr>
@@ -96,7 +116,7 @@ export default async function SuppliersPage() {
             <tbody>
               {others.length === 0 ? (
                 <tr>
-                  <td colSpan={10} className="px-4 py-8 text-center text-zinc-500">
+                  <td colSpan={13} className="px-4 py-8 text-center text-zinc-500">
                     No other suppliers to show.
                   </td>
                 </tr>
@@ -119,6 +139,13 @@ export default async function SuppliersPage() {
                     <td className="px-4 py-2 text-right tabular-nums">
                       {s.medianLeadTimeDays === null ? "—" : `${s.medianLeadTimeDays} d`}
                     </td>
+                    <td className="px-4 py-2 text-right tabular-nums">
+                      {s.fillRatePct === null ? <span className="text-zinc-400">pending</span> : pct(s.fillRatePct)}
+                    </td>
+                    <td className="px-4 py-2 text-right tabular-nums">
+                      {s.onTimePct === null ? <span className="text-zinc-400">pending</span> : pct(s.onTimePct)}
+                    </td>
+                    <td className="px-4 py-2 text-right tabular-nums">{s.claimCount === 0 ? "—" : s.claimCount}</td>
                     <td className="px-4 py-2 text-right tabular-nums">{qty(s.wonDeals)}</td>
                     <td className="px-4 py-2 text-right tabular-nums">{usd(s.wonContributionUsd)}</td>
                   </tr>

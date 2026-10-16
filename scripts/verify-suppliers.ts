@@ -85,8 +85,11 @@ async function main() {
     (a?.rank ?? 99) <= (b?.rank ?? 99),
   );
 
-  const hasUnavailable = dimensions.some((d) => !d.measured && (d.key === "fillrate" || d.key === "ontime" || d.key === "claims"));
-  assert("Explicitly lists fill rate/claims/on-time as unavailable", hasUnavailable);
+  const measured = dimensions.filter((d) => d.measured).map((d) => d.key);
+  assert(
+    "Lists fill rate/on-time/claims as measurable dimensions",
+    ["fillrate", "ontime", "claims"].every((k) => measured.includes(k)),
+  );
 
   await prisma.offer.deleteMany({ where: { supplierId: { in: [s1.id, s2.id] } } });
   await prisma.supplier.deleteMany({ where: { id: { in: [s1.id, s2.id] } } });

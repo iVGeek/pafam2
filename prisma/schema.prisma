@@ -143,6 +143,8 @@ model Supplier {
   deals   Deal[]
 
   purchaseOrders PurchaseOrder[]
+  receipts       GoodsReceipt[]
+  claims         SupplierClaim[]
 
   @@index([name])
 }
@@ -886,6 +888,7 @@ model PurchaseOrder {
   currency   String? // currency the order is priced in
   fxRate     Decimal?    @db.Decimal(18, 8) // USD per 1 unit of currency
   incoterm   String?
+  expectedDate DateTime? // promised delivery date, for on-time measurement (§18)
   notes      String?
   createdBy  String?
   createdAt  DateTime    @default(now())
@@ -894,6 +897,7 @@ model PurchaseOrder {
   supplier     Supplier      @relation(fields: [supplierId], references: [id])
   lines        OrderLine[]
   pfiDocuments PfiDocument[]
+  receipts     GoodsReceipt[]
 
   @@index([supplierId])
   @@index([status])
@@ -920,6 +924,7 @@ model OrderLine {
 
   order   PurchaseOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
   product Product?      @relation(fields: [productId], references: [id])
+  receiptLines GoodsReceiptLine[]
 
   @@index([orderId])
   @@index([productId])
@@ -957,4 +962,96 @@ model PfiLine {
   pfiDocument PfiDocument @relation(fields: [pfiDocumentId], references: [id], onDelete: Cascade)
 
   @@index([pfiDocumentId])
+}
+
+// ---------------------------------------------------------------------------
+// Goods receipts and supplier claims (§18)
+//
+// A goods receipt records what physically arrived against an order. Receipts may
+// be partial (fewer units than ordered) or may reject units (damaged, wrong
+// goods), and several receipts can accumulate against one order. This is what
+// makes fill rate and on-time delivery measurable rather than guessed.
+// ---------------------------------------------------------------------------
+
+// One receipt event (one delivery). Header carries the arrival date and the
+// delivery it was measured against; lines carry per-order-line quantities.
+model GoodsReceipt {
+  id           String   @id @default(cuid())
+  orderId      String
+  supplierId   String
+  reference    String?  @unique
+  receiptDate  DateTime // date the goods physically arrived
+  expectedDate DateTime? // promised date in force at receipt, for on-time measurement
+  carrier      String?
+  notes        String?
+  receivedBy   String?
+  createdAt    DateTime @default(now())
+
+  order    PurchaseOrder     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  supplier Supplier          @relation(fields: [supplierId], references: [id])
+  lines    GoodsReceiptLine[]
+
+  @@index([orderId])
+  @@index([supplierId])
+  @@index([receiptDate])
+}
+
+// One order line's outcome in a receipt: how many units arrived and how many
+// were rejected (damaged / wrong). orderedUnits snapshots the quantity ordered
+// so fill rate survives later order edits.
+model GoodsReceiptLine {
+  id            String  @id @default(cuid())
+  receiptId     String
+  orderLineId   String?
+  orderedUnits  Int     @default(0)
+  receivedUnits Int     @default(0)
+  rejectedUnits Int     @default(0)
+  notes         String?
+
+  receipt   GoodsReceipt @relation(fields: [receiptId], references: [id], onDelete: Cascade)
+  orderLine OrderLine?   @relation(fields: [orderLineId], references: [id], onDelete: SetNull)
+
+  @@index([receiptId])
+  @@index([orderLineId])
+}
+
+enum ClaimType {
+  SHORTAGE
+  DAMAGE
+  QUALITY
+  LATE
+  RETURN
+  OTHER
+}
+
+enum ClaimStatus {
+  OPEN
+  RESOLVED
+  REJECTED
+}
+
+// A claim or return raised against a supplier. Kept even after resolution so it
+// counts against the supplier on the scorecard.
+model SupplierClaim {
+  id          String      @id @default(cuid())
+  supplierId  String
+  orderId     String?
+  receiptId   String?
+  type        ClaimType   @default(OTHER)
+  status      ClaimStatus @default(OPEN)
+  units       Int?
+  amountUsd   Decimal?    @db.Decimal(14, 2)
+  description String
+  openedDate  DateTime    @default(now())
+  resolvedDate DateTime?
+  resolvedBy  String?
+  createdBy   String?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  supplier Supplier @relation(fields: [supplierId], references: [id])
+
+  @@index([supplierId])
+  @@index([status])
+  @@index([orderId])
 }

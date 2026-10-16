@@ -1,9 +1,11 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getOrder, orderTotals, computePfiVariance } from "@/lib/orders";
-import { dateStr, money, qty } from "@/lib/format";
+import { getOrderReceipts, orderFillRate } from "@/lib/receipts";
+import { dateStr, money, pct, qty } from "@/lib/format";
 import { OrderStatusControl } from "./order-status";
 import { PfiUpload } from "./pfi-upload";
+import { ReceiptTools } from "./receipt-tools";
 
 export const dynamic = "force-dynamic";
 
@@ -36,6 +38,13 @@ export default async function OrderDetailPage({
   const totals = orderTotals(order.lines, order.fxRate ? Number(order.fxRate) : null);
   const latestPfi = order.pfiDocuments[0] ?? null;
   const variance = latestPfi ? computePfiVariance(order.lines, latestPfi.lines) : null;
+
+  const receipts = await getOrderReceipts(order.id);
+  const orderedUnits = order.lines.reduce((s, l) => s + l.units, 0);
+  const fill = orderFillRate(orderedUnits, receipts);
+  const lineLabel = (l: (typeof order.lines)[number]) =>
+    [l.brand, l.fragranceName, l.concentration].filter(Boolean).join(" ") +
+      (l.sizeMl ? ` · ${l.sizeMl}ml` : "") || "Unnamed line";
 
   return (
     <div className="flex flex-col gap-6">
@@ -73,6 +82,7 @@ export default async function OrderDetailPage({
           value={order.fxRate ? Number(order.fxRate).toString() : "—"}
         />
         <Meta label="Incoterm" value={order.incoterm ?? "—"} />
+        <Meta label="Promised date" value={order.expectedDate ? dateStr(order.expectedDate) : "—"} />
         <Meta label="Lines" value={String(totals.lineCount)} />
         <Meta label="Cases" value={qty(totals.cases)} />
         <Meta label="Units" value={qty(totals.units)} />
@@ -80,6 +90,12 @@ export default async function OrderDetailPage({
           label="Order value"
           value={`${money(totals.value, currency)}${totals.complete ? "" : " +"}`}
         />
+        <Meta label="Received units" value={qty(fill.receivedUnits)} />
+        <Meta
+          label="Fill rate"
+          value={fill.fillRatePct === null ? "—" : pct(fill.fillRatePct)}
+        />
+        <Meta label="Rejected units" value={qty(fill.rejectedUnits)} />
         <div className="col-span-2 sm:col-span-4">
           <OrderStatusControl id={order.id} status={order.status} />
         </div>
@@ -227,6 +243,77 @@ export default async function OrderDetailPage({
             </p>
           </div>
         ) : null}
+      </div>
+
+      <div className="flex flex-col gap-4 rounded-lg border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900">
+        <div className="flex items-center justify-between">
+          <h2 className="font-medium">Goods receipts</h2>
+          <span className="text-xs text-zinc-500">
+            Record what physically arrived. Fill rate = received ÷ ordered (§18).
+          </span>
+        </div>
+
+        <ReceiptTools
+          orderId={order.id}
+          defaultExpectedDate={
+            order.expectedDate ? order.expectedDate.toISOString().slice(0, 10) : null
+          }
+          lines={order.lines.map((l) => ({
+            id: l.id,
+            code: l.originalCode,
+            label: lineLabel(l),
+            orderedUnits: l.units,
+          }))}
+        />
+
+        {receipts.length > 0 ? (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="text-left text-xs uppercase text-zinc-500">
+                <tr>
+                  <th className="py-1">Date</th>
+                  <th className="py-1">Promised</th>
+                  <th className="py-1">On time</th>
+                  <th className="py-1 text-right">Received</th>
+                  <th className="py-1 text-right">Rejected</th>
+                  <th className="py-1">Lines</th>
+                </tr>
+              </thead>
+              <tbody>
+                {receipts.map((r) => {
+                  const received = r.lines.reduce((s, l) => s + l.receivedUnits, 0);
+                  const rejected = r.lines.reduce((s, l) => s + l.rejectedUnits, 0);
+                  const onTime = r.expectedDate
+                    ? new Date(r.receiptDate).getTime() <= new Date(r.expectedDate).getTime()
+                    : null;
+                  return (
+                    <tr key={r.id} className="border-t border-zinc-100 dark:border-zinc-800">
+                      <td className="py-1.5">{dateStr(r.receiptDate)}</td>
+                      <td className="py-1.5">{r.expectedDate ? dateStr(r.expectedDate) : "—"}</td>
+                      <td className="py-1.5 text-xs">
+                        {onTime === null ? "—" : onTime ? (
+                          <span className="text-emerald-700 dark:text-emerald-400">On time</span>
+                        ) : (
+                          <span className="text-amber-700 dark:text-amber-400">Late</span>
+                        )}
+                      </td>
+                      <td className="py-1.5 text-right tabular-nums">{qty(received)}</td>
+                      <td className="py-1.5 text-right tabular-nums">{qty(rejected)}</td>
+                      <td className="py-1.5 text-xs">{r.lines.length}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+            <p className="mt-2 text-xs text-zinc-500">
+              {receipts.length} receipt{receipts.length === 1 ? "" : "s"} · received{" "}
+              {qty(fill.receivedUnits)} of {qty(orderedUnits)} ordered
+              {fill.fillRatePct === null ? "" : ` · fill rate ${pct(fill.fillRatePct)}`}.
+            </p>
+          </div>
+        ) : (
+          <p className="text-sm text-zinc-500">No receipts recorded yet.</p>
+        )}
       </div>
     </div>
   );

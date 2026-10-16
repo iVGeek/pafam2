@@ -270,12 +270,13 @@ stay unresolved; nothing is invented.
 
 ---
 
-## 9. Orders and proforma invoices
+## 9. Orders, proforma invoices, receipts and claims
 
 ### `PurchaseOrder`
 
 `reference` (unique), `supplierId`, `status` (DRAFT/SENT/CONFIRMED/RECEIVED/
-CANCELLED), `currency`, `fxRate`, `incoterm`, `notes`, `createdBy`.
+CANCELLED), `currency`, `fxRate`, `incoterm`, `expectedDate` (promised delivery,
+used for on-time measurement), `notes`, `createdBy`.
 
 ### `OrderLine`
 
@@ -291,6 +292,26 @@ Line: `originalCode`, `brand`, `name`, `unitPrice`, `currency`, `quantity`,
 
 PFI lines are matched to order lines by internal SKU → code → brand/name/size,
 then classified `match` / `short` / `over` / `missing` / `absent`.
+
+### `GoodsReceipt` / `GoodsReceiptLine` — what physically arrived (§18)
+
+Receipt: `orderId`, `supplierId`, `reference?`, `receiptDate` (actual arrival),
+`expectedDate?` (promise in force at receipt), `carrier?`, `notes?`, `receivedBy`.
+Line: `receiptId`, `orderLineId?`, `orderedUnits` (snapshot), **`receivedUnits`**,
+**`rejectedUnits`**, `notes?`.
+
+Several receipts can accumulate against one order, so **partial deliveries** are
+recorded as they arrive. `receivedUnits` count as delivered; `rejectedUnits` do
+not. Fill rate = received ÷ ordered; a receipt is **on time** when `receiptDate ≤
+expectedDate`. Receipts can be entered on the order page or imported from a
+workbook that matches rows to order lines by code.
+
+### `SupplierClaim` — a claim or return against a supplier (§18)
+
+`supplierId`, `orderId?`, `receiptId?`, `type` (enum `ClaimType`), `status` (enum
+`ClaimStatus`), `units?`, `amountUsd?`, `description`, `openedDate`,
+`resolvedDate?`, `resolvedBy?`. Claims count against the supplier on the
+scorecard whether open, resolved or rejected.
 
 ---
 
@@ -372,6 +393,8 @@ separator characters, and common mojibake. Every change is recorded as an
 | `ExtractionStatus` | PENDING, APPROVED, REJECTED |
 | `TaskStatus` | OPEN, DONE, CANCELLED |
 | `OrderStatus` | DRAFT, SENT, CONFIRMED, RECEIVED, CANCELLED |
+| `ClaimType` | SHORTAGE, DAMAGE, QUALITY, LATE, RETURN, OTHER |
+| `ClaimStatus` | OPEN, RESOLVED, REJECTED |
 
 ---
 
@@ -381,5 +404,3 @@ These fields/tables are **not yet implemented** and are intentionally absent:
 
 - Dated cash-flow ledger and XIRR (§8.4) — only a scalar `cashCycleDays` exists.
 - Financing rate / funded dates / daily funding balances (§8.4).
-- Supplier `promisedDate` / `actualDeliveryDate` and a claims log (§18) — so
-  on-time delivery and claims show as *pending* on the supplier scorecard.

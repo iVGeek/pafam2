@@ -27,6 +27,7 @@
     "db:verify-kpis": "tsx scripts/verify-kpis.ts",
     "db:verify-clean": "tsx scripts/verify-clean.ts",
     "db:verify-supply": "tsx scripts/verify-supply.ts",
+    "db:verify-receipts": "tsx scripts/verify-receipts.ts",
     "verify:auth": "tsx scripts/verify-auth.ts",
     "verify:compare": "tsx scripts/verify-compare.ts",
     "verify:orders": "tsx scripts/verify-orders.ts",

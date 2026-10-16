@@ -35,6 +35,7 @@ Run against a migrated, seeded database.
 | Orders | `npm run verify:orders` | PASS | R5/R2 order creation in whole cases, Excel export, **PDF and Excel PFI parsing**, variance classification (match / short / over / missing / absent). |
 | Product costing | `npm run verify:product-costing` | PASS | R1/R3 landed-cost ranking by supplier, best supplier, break-even and suggested price; **offers with no FX rate rank last, never above a known rate**. |
 | Supply pooling | `npm run db:verify-supply` | PASS | §11.1 duplicate supply counted once (two brokers, one owner's lot = one pool, not summed); location ≠ territory; ownership-unknown shown as a separate range; firm/indicative/incoming/on-request kept apart; stale offers excluded; **ingest links broker rows to one pool**. |
+| Goods receipts & claims | `npm run db:verify-receipts` | PASS | §18 fill rate (partial deliveries accumulate), rejected units not counted as received, on-time % from promised vs actual dates, claims count/value and open claims; **Excel receipt import matches by code**; delivery metrics flow into the supplier scorecard. |
 
 Reproduce:
 
@@ -53,6 +54,7 @@ npm run db:verify-inventory-analytics
 npm run db:verify-kpis
 npm run db:verify-clean
 npm run db:verify-supply
+npm run db:verify-receipts
 npm run verify:auth
 npm run verify:compare
 npm run verify:orders
@@ -90,10 +92,11 @@ database first (port 5433 conflict).
 | Repeated meeting notes do not duplicate demand | PASS | `db:verify-demands` |
 | Approved requirements trigger an eligible profitable match; expired ones do not | PASS | `db:verify-demands` |
 | Stock reservations cannot oversell the same lot | PASS | `db:verify-inventory-analytics` |
+| Partial receipts and returns produce reviewed results | PASS | `db:verify-receipts` (§18 — partial deliveries accumulate to the correct fill rate; rejected units are not counted as received; returns logged as claims) |
 | Actual purchase, sales and payment records reconcile with accounts | **NOT TESTED — not implemented** | No accounting integration yet (§17 Phase 4) |
 | Supplier costs do not appear on customer exports | PASS | `db:verify-customer-pricing` |
 
-**13 of 14 acceptance tests pass.** The 1 not implemented is the accounting
+**14 of 15 acceptance tests pass.** The 1 not implemented is the accounting
 integration (§17 Phase 4) — it is not testable because the underlying records do
 not exist yet.
 
@@ -130,12 +133,11 @@ Documented in `docs/data-dictionary.md` §12 and the README:
 - Dated cash flows, partial payments and **XIRR** (§8.4) — cash return is
   approximated from a single cash-cycle-days figure.
 - Financing rates and daily funding balances (§8.4).
-- Supplier **on-time delivery, fill rate and claims** (§18) — reported *pending*
-  on the scorecard; no goods-receipt or delivery-date records exist.
 - **Forecasts** (§12) — deliberately deferred until enough reliable history
   exists.
 
-§19 per-role access and §11.1 stock pooling **are** now implemented (see the
-Auth, Role-access and Supply-pooling rows in §1) and are no longer gaps.
+§19 per-role access, §11.1 stock pooling and §18 supplier delivery metrics (fill
+rate, on-time, claims) **are** now implemented (see the Auth, Role-access, Supply
+pooling and Goods-receipts rows in §1) and are no longer gaps.
 
 These are expected to be absent, not failures.

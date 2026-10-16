@@ -65,6 +65,12 @@ assert("purchasing can reach orders", canAccess("PURCHASING", "/orders"));
 assert("warehouse cannot create orders", !canAccess("WAREHOUSE", "/api/orders"));
 assert("warehouse owns inventory", canAccess("WAREHOUSE", "/inventory"));
 
+assert("warehouse owns the claims log", canAccess("WAREHOUSE", "/claims") && canAccess("WAREHOUSE", "/api/claims"));
+assert("purchasing can reach claims", canAccess("PURCHASING", "/api/claims"));
+assert("sales cannot reach claims", !canAccess("SALES", "/claims"));
+assert("purchasing records goods receipts", canAccess("PURCHASING", "/api/orders/x/receipts", "POST"));
+assert("sales cannot record goods receipts", !canAccess("SALES", "/api/orders/x/receipts", "POST"));
+
 assert("manager reaches everything", canAccess("MANAGER", "/kpis") && canAccess("MANAGER", "/orders"));
 assert("admin reaches an unclassified route", canAccess("ADMIN", "/some/new/route"));
 assert("an unclassified route is admin-only", !canAccess("SALES", "/some/new/route"));

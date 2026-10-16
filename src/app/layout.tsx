@@ -34,6 +34,7 @@ const nav = [
   { href: "/calculator", label: "CP/SP" },
   { href: "/compare", label: "Compare" },
   { href: "/inventory", label: "Inventory" },
+  { href: "/claims", label: "Claims" },
   { href: "/demands", label: "Demand" },
   { href: "/pricing", label: "Pricing" },
   { href: "/trends", label: "Trends" },

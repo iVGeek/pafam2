@@ -45,6 +45,7 @@ export type CreateOrderInput = {
   reference?: string | null;
   currency?: string | null;
   incoterm?: string | null;
+  expectedDate?: string | Date | null;
   notes?: string | null;
   createdBy?: string | null;
   lines: OrderLineInput[];
@@ -60,6 +61,12 @@ function toNum(value: number | string | null | undefined): number | null {
   if (value === null || value === undefined || value === "") return null;
   const n = Number(value);
   return Number.isFinite(n) ? n : null;
+}
+
+function toDate(value: string | Date | null | undefined): Date | null {
+  if (value === null || value === undefined || value === "") return null;
+  const d = value instanceof Date ? value : new Date(value);
+  return Number.isNaN(d.getTime()) ? null : d;
 }
 
 function packaging(value: string | null | undefined): PackagingLevel {
@@ -107,6 +114,7 @@ export async function createOrder(input: CreateOrderInput) {
       currency,
       fxRate: fx.rate || null,
       incoterm: input.incoterm?.trim() || null,
+      expectedDate: toDate(input.expectedDate),
       notes: input.notes?.trim() || null,
       createdBy: input.createdBy ?? null,
       lines: {
@@ -193,6 +201,28 @@ export async function updateOrderStatus(id: string, status: string, actor?: stri
       entityType: "PurchaseOrder",
       entityId: id,
       after: { status: next },
+    },
+  });
+  return order;
+}
+
+export async function updateOrderExpectedDate(
+  id: string,
+  expectedDate: string | Date | null,
+  actor?: string | null,
+) {
+  const date = toDate(expectedDate);
+  const order = await prisma.purchaseOrder.update({
+    where: { id },
+    data: { expectedDate: date },
+  });
+  await prisma.auditLog.create({
+    data: {
+      actor: actor ?? "web",
+      action: "order.expected_date_changed",
+      entityType: "PurchaseOrder",
+      entityId: id,
+      after: { expectedDate: date ? date.toISOString().slice(0, 10) : null },
     },
   });
   return order;

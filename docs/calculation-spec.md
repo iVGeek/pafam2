@@ -278,7 +278,51 @@ The same de-duplicated supply feeds the demand-vs-supply alert
 
 ---
 
-## 13. Acceptance check (§9 illustration)
+## 13. Supplier delivery metrics (§18)
+
+Fill rate, on-time delivery and claims are measured from recorded goods receipts
+and claims — never estimated.
+
+**Fill rate** for a supplier (and for one order):
+
+```
+fill rate = Σ receivedUnits / Σ orderedUnits        (per supplier)
+```
+
+Partial deliveries accumulate: three receipts of 40 units against a 100-unit
+order give 120/100 only after 120 have actually arrived. **Rejected units are not
+counted as received.** Ordered units are counted once per order even when the
+order arrives in several receipts.
+
+**On-time delivery**: a receipt is on time when `receiptDate ≤ expectedDate`
+(the receipt's promised date, or the order's `expectedDate` if none). On-time % =
+on-time receipts ÷ receipts that have a promised date. Receipts with no promised
+date are excluded rather than assumed late or on time.
+
+**Claims**: count and value of claims/returns, plus how many are still open.
+
+The supplier scorecard's **delivery component** blends whatever is measurable:
+
+```
+fill    = min(fillRate, 100) / 100
+ontime  = min(onTimePct, 100) / 100
+claims  = 1 − min(claimCount / receiptCount, 1)
+delivery = mean(available parts)
+```
+
+The composite score adds the delivery component **only when delivery history
+exists**, and normalises by the weights actually applied, so a supplier with no
+receipts is still scored on cost, freshness and evidence alone:
+
+```
+weights = cost 0.5, freshness 0.3, evidence 0.2, delivery 0.3
+totalWeight = 1.0 (+ 0.3 when delivery is measurable)
+score = Σ(weight × part) / totalWeight × 100
+```
+
+---
+
+## 14. Acceptance check (§9 illustration)
 
 The brief's worked example must reconcile exactly. For **1,000 bottles at $30**,
 inbound costs **$3,000**, sell at **$40**, outbound **$2,000**, deployed capital
@@ -299,7 +343,7 @@ engine.
 
 ---
 
-## 14. What is deliberately not modelled yet
+## 15. What is deliberately not modelled yet
 
 - **XIRR / dated cash flows / partial payments** (§8.4).
 - **Financing rate, funded dates, daily funding balances** (§8.4).

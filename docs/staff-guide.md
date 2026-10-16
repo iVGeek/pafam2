@@ -160,6 +160,30 @@ Go to **Orders** → **New**.
    - `missing` — on the order, not on the PFI
    - `absent` — on the PFI, not on the order
 4. Advance the order status: Draft → Sent → Confirmed → Received (or Cancelled).
+5. **Set a promised delivery date** on the order when the supplier commits one —
+   this is what on-time delivery is measured against.
+
+### Receiving stock (goods receipts)
+
+Open the order → **Goods receipts**. You can record a receipt two ways:
+
+- **By hand** — enter the arrival date, the promised date, and per line how many
+  units arrived (**received**) and how many were rejected (damaged / wrong).
+- **From Excel** — download the order's receipt template, fill in the received
+  and rejected quantities, and import it. Rows are matched to order lines by
+  code.
+
+Partial deliveries are normal: record each arrival as it happens, and the order's
+**fill rate** builds up to the units actually received ÷ units ordered.
+**Rejected units are not counted as received.** A receipt is on time if it
+arrived on or before the promised date.
+
+### Claims and returns
+
+Go to **Claims**. Log shortages, damage, quality issues, late deliveries and
+returns against the supplier, with units and value. Claims count against the
+supplier on the **scorecard** even after they are resolved. Warehouse and
+Purchasing can log and resolve claims; Sales and Accounts cannot.
 
 ---
 
@@ -190,6 +214,7 @@ Go to **Inventory**.
 | **Products** | Product master, and per product the ranked landed cost by supplier with best supplier, break-even and suggested price. |
 | **Supply** | Observed available supply, deduplicated: each owner's lot counted once even when several brokers list it. Firm, indicative, incoming and on-request kept apart; unknown ownership shown as a range. |
 | **KPIs** | Quote conversion, lost-sale reasons, realised vs expected margin, fill rate, repeat purchases, overdue debt, cash deployment, exposure, stock turn. Each has a **named owner**. KPIs whose inputs don't exist yet are shown as **pending**, never as zero. |
+| **Claims** | Supplier claims and returns (shortage, damage, quality, late, return): count, value, open vs resolved. Feeds the supplier scorecard. |
 | **Alerts** | Configurable thresholds by brand or SKU; each alert carries evidence and a suggested action. |
 | **Audit** | Who changed what, when, with before/after values. |
 
@@ -224,7 +249,7 @@ an API call) that names your role and lists what you *can* open.
 | **PURCHASING** | Dashboard, Market (offers, suppliers, products, pricing, trends, compare), Purchasing (orders, imports, exceptions, exposure, opportunities), Trading (deals, calculator, alerts), Inventory. |
 | **SALES** | Dashboard, Market, Trading, and Sales (customers, demand, notes, quotes, tasks). Does **not** see internal inventory, FX, KPIs or the audit log. |
 | **ACCOUNTS** | Dashboard, Trading, and Accounts (FX, KPIs, audit log). |
-| **WAREHOUSE** | Dashboard and Inventory only. |
+| **WAREHOUSE** | Dashboard, Inventory, and Claims (goods shortages, damage, returns). |
 
 Notes:
 
@@ -234,6 +259,8 @@ Notes:
 - **Writing thresholds is manager territory.** Reading settings is open to
   everyone; changing minimum margins, exposure caps, alert thresholds or KPI
   owners is limited to ADMIN, MANAGER and ACCOUNTS.
+- **Goods receipts are recorded by Purchasing** (who own the order and the
+  supplier confirmation); **Warehouse owns inventory lots and claims** (§18).
 - Changing a user's role takes effect **the next time they sign in** — the role
   is part of their signed session.
 - New routes that haven't been classified are admin-only by default (fail
@@ -249,8 +276,6 @@ Be aware these are not modelled yet — do not expect the system to compute them
 - **Dated cash flows, partial payments and XIRR** — cash return is approximated
   from a single cash-cycle-days figure.
 - **Financing rates and daily funding balances.**
-- **Supplier on-time delivery, fill rate and claims** — these show as *pending*
-  on the supplier scorecard until goods-receipt and delivery-date records exist.
 - **Forecasts** — deliberately not produced until enough reliable history
   exists.
 

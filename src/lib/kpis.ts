@@ -12,6 +12,7 @@
 import { prisma } from "./prisma";
 import { getExposure } from "./exposure";
 import { getInventoryAnalytics } from "./inventory";
+import { getSupplierDeliveryMetrics } from "./receipts";
 
 export type KpiStatus = "measured" | "pending";
 
@@ -63,7 +64,7 @@ export type KpiResult = {
 };
 
 export async function getKpis(now = new Date()): Promise<KpiResult> {
-  const [owners, quoteGroups, lostGroups, wonByCustomer, wonAgg, openAgg, exposure, inv] =
+  const [owners, quoteGroups, lostGroups, wonByCustomer, wonAgg, openAgg, exposure, inv, delivery] =
     await Promise.all([
       getKpiOwners(),
       prisma.quote.groupBy({ by: ["status"], _count: { _all: true } }),
@@ -85,6 +86,7 @@ export async function getKpis(now = new Date()): Promise<KpiResult> {
       }),
       getExposure(now),
       getInventoryAnalytics(now),
+      getSupplierDeliveryMetrics(),
     ]);
 
   const quotes = new Map<string, number>(quoteGroups.map((q) => [String(q.status), q._count._all]));
@@ -132,14 +134,24 @@ export async function getKpis(now = new Date()): Promise<KpiResult> {
     detail: "Awaiting sale and collection records (Phase 4 accounting) to compare realised to expected.",
   });
 
-  // 4. Supplier fill rate — needs goods-receipt records.
+  // 4. Supplier fill rate — measured once goods receipts exist.
+  let totalOrdered = 0;
+  let totalReceived = 0;
+  for (const m of delivery.values()) {
+    totalOrdered += m.orderedUnits;
+    totalReceived += m.receivedUnits;
+  }
+  const fillRate = totalOrdered > 0 ? (totalReceived / totalOrdered) * 100 : null;
   kpis.push({
     key: "supplier_fill_rate",
     label: "Supplier fill rate",
     owner: owners.supplier_fill_rate,
-    value: "—",
-    status: "pending",
-    detail: "Needs goods-receipt records (quantity ordered vs received). See the supplier scorecard for available dimensions.",
+    value: fillRate === null ? "—" : pct(fillRate),
+    status: fillRate === null ? "pending" : "measured",
+    detail:
+      fillRate === null
+        ? "No goods-receipt records yet; record receipts on a purchase order to measure fill rate."
+        : `${totalReceived} units received of ${totalOrdered} ordered across ${delivery.size} supplier${delivery.size === 1 ? "" : "s"}.`,
     href: "/suppliers",
   });
 
