@@ -67,6 +67,8 @@ model AppUser {
   id        String   @id @default(cuid())
   email     String   @unique
   name      String
+  // scrypt hash: "scrypt:<salt hex>:<hash hex>". Null until a password is set.
+  passwordHash String?
   role      Role     @default(PURCHASING)
   active    Boolean  @default(true)
   createdAt DateTime @default(now())

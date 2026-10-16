@@ -19,6 +19,7 @@
     "db:verify-inventory-analytics": "tsx scripts/verify-inventory-analytics.ts",
     "db:verify-kpis": "tsx scripts/verify-kpis.ts",
     "db:verify-clean": "tsx scripts/verify-clean.ts",
+    "verify:auth": "tsx scripts/verify-auth.ts",
     "postinstall": "prisma generate",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate deploy",

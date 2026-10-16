@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Geist, Geist_Mono } from "next/font/google";
+import { getCurrentUser } from "@/lib/session";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -42,44 +43,67 @@ const nav = [
   { href: "/fx", label: "FX" },
 ] as const;
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default async function RootLayout({ children }: LayoutProps<"/">) {
+  const user = await getCurrentUser();
+
   return (
     <html
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-zinc-50 text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
-        <header className="border-b border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
-          <div className="mx-auto flex max-w-6xl items-center gap-6 px-6 py-3">
-            <Link href="/" className="font-semibold tracking-tight">
-              Perfumes+
-            </Link>
-            <nav className="flex flex-wrap gap-4 text-sm">
-              {nav.map((item) => (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className="text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
-                >
-                  {item.label}
+        {user ? (
+          <>
+            <header className="border-b border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
+              <div className="mx-auto flex max-w-6xl items-center gap-6 px-6 py-3">
+                <Link href="/" className="font-semibold tracking-tight">
+                  Perfumes+
                 </Link>
-              ))}
-            </nav>
-            <a
-              href="/api/template"
-              className="ml-auto rounded-md bg-zinc-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-zinc-700 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300"
-            >
-              Download template
-            </a>
-          </div>
-        </header>
-        <main className="mx-auto w-full max-w-6xl flex-1 px-6 py-8">
-          {children}
-        </main>
-        <footer className="border-t border-zinc-200 px-6 py-4 text-xs text-zinc-500 dark:border-zinc-800">
-          Records and history are authoritative here; Excel is import/export
-          only.
-        </footer>
+                <nav className="flex flex-wrap gap-4 text-sm">
+                  {nav.map((item) => (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      className="text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
+                    >
+                      {item.label}
+                    </Link>
+                  ))}
+                </nav>
+                <div className="ml-auto flex items-center gap-3 text-sm">
+                  <a
+                    href="/api/template"
+                    className="rounded-md bg-zinc-900 px-3 py-1.5 font-medium text-white hover:bg-zinc-700 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300"
+                  >
+                    Download template
+                  </a>
+                  <span className="hidden text-zinc-500 sm:inline">
+                    {user.name}
+                  </span>
+                  <form method="POST" action="/api/auth/logout">
+                    <button
+                      type="submit"
+                      className="text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
+                    >
+                      Sign out
+                    </button>
+                  </form>
+                </div>
+              </div>
+            </header>
+            <main className="mx-auto w-full max-w-6xl flex-1 px-6 py-8">
+              {children}
+            </main>
+            <footer className="border-t border-zinc-200 px-6 py-4 text-xs text-zinc-500 dark:border-zinc-800">
+              Records and history are authoritative here; Excel is import/export
+              only.
+            </footer>
+          </>
+        ) : (
+          <main className="mx-auto w-full max-w-6xl flex-1 px-6 py-8">
+            {children}
+          </main>
+        )}
       </body>
     </html>
   );

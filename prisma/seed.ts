@@ -1,4 +1,5 @@
 import { PrismaClient } from "@prisma/client";
+import { hashPassword } from "../src/lib/auth";
 
 const prisma = new PrismaClient();
 
@@ -10,8 +11,18 @@ async function main() {
       email: "admin@pafam2.local",
       name: "Administrator",
       role: "ADMIN",
+      passwordHash: hashPassword(process.env.ADMIN_PASSWORD ?? "change-me"),
     },
   });
+
+  // Bootstrap a password for any pre-existing user that has none, without ever
+  // overwriting a password the operator has since changed.
+  if (!admin.passwordHash) {
+    await prisma.appUser.update({
+      where: { id: admin.id },
+      data: { passwordHash: hashPassword(process.env.ADMIN_PASSWORD ?? "change-me") },
+    });
+  }
 
   const defaults: { key: string; value: unknown }[] = [
     { key: "price_anomaly_pct", value: 40 },

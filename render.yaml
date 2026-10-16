@@ -26,6 +26,14 @@ services:
         value: "24"
       - key: NODE_ENV
         value: production
+      # Secrets: set these in the Render dashboard (sync: false creates the
+      # placeholder without storing a value in this file).
+      #   AUTH_SECRET   - random 32+ char string used to sign session cookies
+      #   ADMIN_PASSWORD - initial password for admin@pafam2.local
+      - key: AUTH_SECRET
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
 
 databases:
   - name: pafam2-db
