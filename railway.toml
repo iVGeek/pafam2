@@ -1,0 +1,28 @@
+# Railway configuration for pafam2 (Next.js + PostgreSQL).
+# Docs: https://docs.railway.com/reference/config-as-code
+#
+# One-time setup in the Railway dashboard (or with the `railway` CLI):
+#   1. Create a project and add the "PostgreSQL" database plugin.
+#   2. Add this repo as a service (deploy from the GitHub repo `iVGeek/pafam2`,
+#      branch `main`). Railway reads the [build]/[deploy] sections below.
+#   3. On the app service, set these variables:
+#        DATABASE_URL   = ${{Postgres.DATABASE_URL}}
+#        AUTH_SECRET    = <random 32+ chars>   (signs session cookies)
+#        ADMIN_PASSWORD = <initial admin password>
+#      (NODE_ENV=production is set automatically by Railway.)
+
+[build]
+builder = "NIXPACKS"
+# Nixpacks installs dependencies (npm ci) as its install phase; here we only
+# need to generate the Prisma client on Railway's Linux builder, then build.
+buildCommand = "npx prisma generate && npm run build"
+
+[deploy]
+# Apply committed migrations and run the idempotent seed before starting, so a
+# freshly provisioned database is ready. /api/health returns 200 only when the
+# database is reachable and migrated.
+startCommand = "npx prisma migrate deploy && npx prisma db seed && npm run start"
+healthcheckPath = "/api/health"
+healthcheckTimeout = 300
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 10
