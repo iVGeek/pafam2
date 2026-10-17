@@ -13,6 +13,7 @@ import { prisma } from "./prisma";
 import { getExposure } from "./exposure";
 import { getInventoryAnalytics } from "./inventory";
 import { getSupplierDeliveryMetrics } from "./receipts";
+import { getOutstandingSummary } from "./cashflow";
 
 export type KpiStatus = "measured" | "pending";
 
@@ -171,14 +172,19 @@ export async function getKpis(now = new Date()): Promise<KpiResult> {
     href: "/customers",
   });
 
-  // 6. Overdue debt — needs receivables.
+  // 6. Overdue debt — customer invoices past their due date with a balance.
+  const outstanding = await getOutstandingSummary();
+  const hasInvoices = outstanding.receivableUsd > 0 || outstanding.payableUsd > 0 || outstanding.overdueReceivableUsd > 0 || outstanding.overduePayableUsd > 0;
   kpis.push({
     key: "overdue_debt",
     label: "Overdue debt",
     owner: owners.overdue_debt,
-    value: "—",
-    status: "pending",
-    detail: "Needs receivable/invoice and payment-received data (Phase 4 accounting).",
+    value: hasInvoices ? `$${Math.round(outstanding.overdueReceivableUsd).toLocaleString("en-US")}` : "—",
+    status: hasInvoices ? "measured" : "pending",
+    detail: hasInvoices
+      ? `Overdue customer debt $${Math.round(outstanding.overdueReceivableUsd).toLocaleString("en-US")} of $${Math.round(outstanding.receivableUsd).toLocaleString("en-US")} receivable. We owe $${Math.round(outstanding.overduePayableUsd).toLocaleString("en-US")} overdue of $${Math.round(outstanding.payableUsd).toLocaleString("en-US")} payable.`
+      : "No invoices recorded yet — record invoices to measure overdue debt.",
+    href: "/cashflow",
   });
 
   // 7. Cash deployment.

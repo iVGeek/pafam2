@@ -61,6 +61,11 @@ assert("accounts can reach FX", canAccess("ACCOUNTS", "/fx"));
 assert("sales cannot reach FX", !canAccess("SALES", "/fx"));
 assert("purchasing cannot read the audit log", !canAccess("PURCHASING", "/api/audit"));
 
+assert("accounts owns cash flow", canAccess("ACCOUNTS", "/cashflow") && canAccess("ACCOUNTS", "/api/cashflow", "POST"));
+assert("accounts owns invoices and financing", canAccess("ACCOUNTS", "/invoices") && canAccess("ACCOUNTS", "/api/financing", "POST"));
+assert("sales cannot reach cash flow", !canAccess("SALES", "/cashflow") && !canAccess("SALES", "/api/invoices"));
+assert("purchasing cannot record payments", !canAccess("PURCHASING", "/api/invoices/x/payments", "POST"));
+
 assert("purchasing can reach orders", canAccess("PURCHASING", "/orders"));
 assert("warehouse cannot create orders", !canAccess("WAREHOUSE", "/api/orders"));
 assert("warehouse owns inventory", canAccess("WAREHOUSE", "/inventory"));

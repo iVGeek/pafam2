@@ -315,7 +315,48 @@ scorecard whether open, resolved or rejected.
 
 ---
 
-## 10. Excel template columns
+## 10. Money: invoices, dated cash flows and financing (§8.4)
+
+### `Invoice` — a supplier bill or a customer invoice
+
+`type` (enum `InvoiceType`), `number` (unique), `status` (enum `InvoiceStatus`),
+`partyType`/`partyId` (the supplier or customer it belongs to), `orderId?`,
+`dealId?`, `quoteId?`, `currency`, `fxRate?`, `total`, `paid`, `balance`,
+`issueDate`, `dueDate?`, `notes?`, `createdBy`. `paid` is the running sum of
+payments and `balance = total − paid`; a payment may never exceed the balance.
+Status moves `OPEN → PARTIALLY_PAID → PAID`; `CANCELLED` is a manual terminal
+state.
+
+### `PaymentReceipt` — one payment against an invoice
+
+`invoiceId`, `cashFlowId` (unique), `direction` (enum `PaymentDirection`),
+`amount`, `currency`, `fxRate?`, `paidDate`, `reference?`, `method?`, `notes?`,
+`createdBy`. Recording a payment writes the receipt **and** a dated `CashFlow`
+in one transaction, so the invoice balance and the cash ledger can never
+disagree. `direction` is `IN` for a customer paying us and `OUT` for us paying a
+supplier bill.
+
+### `CashFlow` — the dated, signed cash ledger
+
+`date`, `type` (enum `CashFlowType`), **`amountUsd` (signed: out negative)**,
+`currency`, `fxRate?`, `orderId?`, `dealId?`, `quoteId?`, `invoiceId?`,
+`reference?`, `note?`, `createdBy`, and a back-relation `paymentReceipt?`. This
+is the single source of truth for cash timing: XIRR, daily funding balances and
+deal cash return are all computed from it. The sign of `amountUsd` is fixed by
+`type` except for `ADJUSTMENT`/`OTHER`, which keep the caller's sign.
+
+### `FinancingEntry` — a short-term funding facility
+
+`fromDate`, `toDate?`, `fundedDate?`, `repaidDate?`, `principalUsd`,
+`rateAnnual?`, `interestUsd?`, `currency`, `description`, `dealId?`, `orderId?`,
+`status` (enum `FinancingStatus`), timestamps. Interest = `principal ×
+rateAnnual × days/365`. A facility counts in the daily funding balance from its
+funded date until it is repaid; the balance is `financingOutstanding + netCash`
+for each day.
+
+---
+
+## 11. Excel template columns
 
 The canonical template (`src/lib/columns.ts`, downloadable at **/api/template**)
 uses these columns for both import and export so files round-trip cleanly.
@@ -367,7 +408,7 @@ separator characters, and common mojibake. Every change is recorded as an
 
 ---
 
-## 11. Enumerations
+## 12. Enumerations
 
 | Enum | Values |
 | --- | --- |
@@ -395,12 +436,18 @@ separator characters, and common mojibake. Every change is recorded as an
 | `OrderStatus` | DRAFT, SENT, CONFIRMED, RECEIVED, CANCELLED |
 | `ClaimType` | SHORTAGE, DAMAGE, QUALITY, LATE, RETURN, OTHER |
 | `ClaimStatus` | OPEN, RESOLVED, REJECTED |
+| `InvoiceType` | SUPPLIER, CUSTOMER |
+| `InvoiceStatus` | OPEN, PARTIALLY_PAID, PAID, CANCELLED |
+| `PaymentDirection` | IN, OUT |
+| `CashFlowType` | BUY_PAYMENT, SELL_RECEIPT, FINANCING_IN, FINANCING_OUT, RECOVERABLE_REFUND, DEPOSIT_SUPPLIER, DEPOSIT_CUSTOMER, ADJUSTMENT, OTHER |
+| `FinancingStatus` | ACTIVE, REPAID, CANCELLED |
 
 ---
 
-## 12. Known gaps
+## 13. Known gaps
 
 These fields/tables are **not yet implemented** and are intentionally absent:
 
-- Dated cash-flow ledger and XIRR (§8.4) — only a scalar `cashCycleDays` exists.
-- Financing rate / funded dates / daily funding balances (§8.4).
+- (none currently — the dated cash-flow ledger, XIRR, partial payments,
+  financing rates with funded dates and daily funding balances are now modelled;
+  see §10.)

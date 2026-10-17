@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { dealToInput, getDeal, recommendationForOffer } from "@/lib/deals";
+import { getDealCashReturn } from "@/lib/cashflow";
 import { money, pct, qty, usd, dateStr } from "@/lib/format";
 import { runScenarios } from "@/lib/scenarios";
 import { DealActions } from "./deal-actions";
@@ -21,6 +22,7 @@ export default async function DealDetailPage({
 
   const scenarios = runScenarios(dealToInput(deal));
   const recommendation = deal.offer ? await recommendationForOffer(deal.offer) : null;
+  const cashReturn = await getDealCashReturn(deal.id);
   const existingQuote = deal.quoteLines[0]?.quote ?? null;
   const missingInputs: string[] = Array.isArray(deal.missingInputs)
     ? (deal.missingInputs as string[])
@@ -163,6 +165,33 @@ export default async function DealDetailPage({
             </tbody>
           </table>
         </div>
+      </section>
+
+      <section className="rounded-lg border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900">
+        <div className="flex items-center justify-between">
+          <h2 className="font-medium">Dated cash return (§8.4)</h2>
+          <Link href="/cashflow" className="text-sm hover:underline">
+            Cash flow →
+          </Link>
+        </div>
+        {cashReturn ? (
+          <dl className="mt-3 grid grid-cols-2 gap-x-6 gap-y-3 text-sm sm:grid-cols-4">
+            <Item label="Cash in" value={usd(cashReturn.totalInUsd)} />
+            <Item label="Cash out" value={usd(cashReturn.totalOutUsd)} />
+            <Item label="Net" value={usd(cashReturn.netUsd)} />
+            <Item label="Cash-on-cash return" value={pct(cashReturn.cashReturnPct)} />
+            <Item label="XIRR" value={cashReturn.xirrPct === null ? "—" : pct(cashReturn.xirrPct)} />
+            <Item label="Holding period (days)" value={cashReturn.holdingDays === null ? "—" : String(cashReturn.holdingDays)} />
+            <Item label="First paid" value={cashReturn.firstPaidDate ?? "—"} />
+            <Item label="Last receipt" value={cashReturn.lastReceiptDate ?? "—"} />
+          </dl>
+        ) : (
+          <p className="mt-3 text-sm text-zinc-500">
+            No dated cash flows recorded for this deal yet. Record buy payments and sales receipts
+            on the Cash flow screen to measure the real XIRR; the annualised return above is an
+            estimate.
+          </p>
+        )}
       </section>
 
       <section className="rounded-lg border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900">

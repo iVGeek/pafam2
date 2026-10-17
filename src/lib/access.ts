@@ -98,7 +98,19 @@ const AREA_PREFIXES: Record<Exclude<Area, "dashboard" | "auth" | "admin">, reado
     "/api/tasks",
     "/api/quotes",
   ],
-  accounts: ["/fx", "/kpis", "/audit", "/api/fx", "/api/audit"],
+  accounts: [
+    "/fx",
+    "/kpis",
+    "/audit",
+    "/cashflow",
+    "/invoices",
+    "/financing",
+    "/api/fx",
+    "/api/audit",
+    "/api/cashflow",
+    "/api/invoices",
+    "/api/financing",
+  ],
   warehouse: ["/inventory", "/claims", "/api/inventory", "/api/claims"],
 };
 
@@ -148,7 +160,7 @@ export const AREA_LABELS: Record<Area, string> = {
   purchasing: "Purchasing (orders, imports, exceptions, exposure)",
   trading: "Trading (deals, calculator, alerts)",
   sales: "Sales (customers, demand, notes, quotes, tasks)",
-  accounts: "Accounts (FX, KPIs, audit log)",
+  accounts: "Accounts (FX, cash flow, invoices, financing, KPIs, audit log)",
   warehouse: "Warehouse (inventory and lots)",
   admin: "Administration",
 };

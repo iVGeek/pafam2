@@ -5,10 +5,10 @@ this document — results are reproducible against the local database.
 
 | | |
 | --- | --- |
-| **Run date** | 16 October 2026 |
+| **Run date** | 17 October 2026 |
 | **Node** | v24.20.0 |
 | **Database** | PostgreSQL 17 (embedded, localhost:5433) |
-| **Overall** | **All 14 suites passed — 0 failures** |
+| **Overall** | **All 15 suites passed — 0 failures** |
 
 ---
 
@@ -36,6 +36,7 @@ Run against a migrated, seeded database.
 | Product costing | `npm run verify:product-costing` | PASS | R1/R3 landed-cost ranking by supplier, best supplier, break-even and suggested price; **offers with no FX rate rank last, never above a known rate**. |
 | Supply pooling | `npm run db:verify-supply` | PASS | §11.1 duplicate supply counted once (two brokers, one owner's lot = one pool, not summed); location ≠ territory; ownership-unknown shown as a separate range; firm/indicative/incoming/on-request kept apart; stale offers excluded; **ingest links broker rows to one pool**. |
 | Goods receipts & claims | `npm run db:verify-receipts` | PASS | §18 fill rate (partial deliveries accumulate), rejected units not counted as received, on-time % from promised vs actual dates, claims count/value and open claims; **Excel receipt import matches by code**; delivery metrics flow into the supplier scorecard. |
+| Cash flow & financing | `npm run db:verify-cashflow` | PASS | §8.4 signed dated ledger (out negative, in positive; sign fixed by type); **XIRR** (10% over one and two years, null without a sign change); invoices with partial payments (`PARTIALLY_PAID` → `PAID`, balance = total − paid), **overpayment rejected**; each payment writes a customer/supplier `CashFlow`; overdue receivables; financing interest (`5000 × 12% × 365d = 600`), outstanding financing and **daily funding balance = outstanding + net cash**; deal cash-on-cash return, holding period and XIRR (no dated flows → `null`, estimate untouched). |
 
 Reproduce:
 
@@ -55,6 +56,7 @@ npm run db:verify-kpis
 npm run db:verify-clean
 npm run db:verify-supply
 npm run db:verify-receipts
+npm run db:verify-cashflow
 npm run verify:auth
 npm run verify:compare
 npm run verify:orders
@@ -93,12 +95,14 @@ database first (port 5433 conflict).
 | Approved requirements trigger an eligible profitable match; expired ones do not | PASS | `db:verify-demands` |
 | Stock reservations cannot oversell the same lot | PASS | `db:verify-inventory-analytics` |
 | Partial receipts and returns produce reviewed results | PASS | `db:verify-receipts` (§18 — partial deliveries accumulate to the correct fill rate; rejected units are not counted as received; returns logged as claims) |
-| Actual purchase, sales and payment records reconcile with accounts | **NOT TESTED — not implemented** | No accounting integration yet (§17 Phase 4) |
+| Actual purchase, sales and payment records reconcile with accounts | PASS | `db:verify-cashflow` (§8.4 — partial payments update the invoice balance (`balance = total − paid`) and write a dated cash-ledger entry in one transaction; overpayment is rejected; the dated ledger nets to the daily funding balance). A full external general-ledger sync remains out of scope. |
 | Supplier costs do not appear on customer exports | PASS | `db:verify-customer-pricing` |
 
-**14 of 15 acceptance tests pass.** The 1 not implemented is the accounting
-integration (§17 Phase 4) — it is not testable because the underlying records do
-not exist yet.
+**15 of 15 acceptance tests pass.** Payment records now reconcile to invoice
+balances and the dated cash ledger via invoices and payments (§8.4). Syncing to
+an external general ledger (an accounting package) is not built — the platform's
+own records are the authority — but the reconciliation the brief asks for is
+demonstrable.
 
 ---
 
@@ -119,6 +123,7 @@ Run against a real running server (local, and once against the deployed host).
 | PFI upload, **both PDF and Excel** → variance classification | PASS |
 | `/calculator` and `/products/[id]` render with landed-cost ranking | PASS |
 | `/audit` and `/api/audit` return entries; filters work; unauthenticated → 307 | PASS |
+| `/cashflow`, `/api/cashflow`, `/api/invoices`, `/api/financing` return with a session; unauthenticated `/cashflow` → 307 | PASS |
 
 Deployed host smoke (`https://pafam2.onrender.com`): `/api/health` 200. Login
 requires `AUTH_SECRET` to be set on the host — until then the app fails closed
@@ -128,16 +133,15 @@ requires `AUTH_SECRET` to be set on the host — until then the app fails closed
 
 ## 5. Known gaps these tests do **not** cover
 
-Documented in `docs/data-dictionary.md` §12 and the README:
+Documented in `docs/data-dictionary.md` §13 and the README:
 
-- Dated cash flows, partial payments and **XIRR** (§8.4) — cash return is
-  approximated from a single cash-cycle-days figure.
-- Financing rates and daily funding balances (§8.4).
 - **Forecasts** (§12) — deliberately deferred until enough reliable history
   exists.
 
-§19 per-role access, §11.1 stock pooling and §18 supplier delivery metrics (fill
-rate, on-time, claims) **are** now implemented (see the Auth, Role-access, Supply
-pooling and Goods-receipts rows in §1) and are no longer gaps.
+§19 per-role access, §11.1 stock pooling, §18 supplier delivery metrics (fill
+rate, on-time, claims) and §8.4 dated cash flows, partial payments, XIRR,
+financing and daily funding balances **are** now implemented (see the Auth,
+Role-access, Supply pooling, Goods-receipts and Cash-flow rows in §1) and are no
+longer gaps.
 
 These are expected to be absent, not failures.

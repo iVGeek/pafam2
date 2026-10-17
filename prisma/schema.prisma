@@ -543,6 +543,10 @@ model Deal {
   inventoryItems InventoryItem[]
   reservations   InventoryReservation[]
 
+  invoices  Invoice[]
+  cashFlows CashFlow[]
+  financing FinancingEntry[]
+
   @@index([status])
   @@index([supplierId])
   @@index([productId])
@@ -585,6 +589,9 @@ model Quote {
 
   customer Customer    @relation(fields: [customerId], references: [id])
   lines    QuoteLine[]
+
+  invoices  Invoice[]
+  cashFlows CashFlow[]
 
   @@index([customerId])
   @@index([status])
@@ -899,6 +906,10 @@ model PurchaseOrder {
   pfiDocuments PfiDocument[]
   receipts     GoodsReceipt[]
 
+  invoices  Invoice[]
+  cashFlows CashFlow[]
+  financing FinancingEntry[]
+
   @@index([supplierId])
   @@index([status])
 }
@@ -1054,4 +1065,164 @@ model SupplierClaim {
   @@index([supplierId])
   @@index([status])
   @@index([orderId])
+}
+
+// ---------------------------------------------------------------------------
+// Cash flows, invoices, payments and financing (§8.4)
+//
+// Dated cash flows are authoritative. Partial payments, financing rates and
+// funded dates, daily funding balances and XIRR are all derived from these
+// records. Recoverable items affect funding but are treated separately from
+// permanent cost.
+// ---------------------------------------------------------------------------
+
+enum InvoiceType {
+  SUPPLIER
+  CUSTOMER
+}
+
+enum InvoiceStatus {
+  OPEN
+  PARTIALLY_PAID
+  PAID
+  CANCELLED
+}
+
+// A dated bill (supplier, we owe) or customer invoice (they owe us), optionally
+// tied to an order, quote or deal. Paid/balance are maintained from payments.
+model Invoice {
+  id         String        @id @default(cuid())
+  type       InvoiceType   @default(SUPPLIER)
+  orderId    String?
+  quoteId    String?
+  dealId     String?
+  reference  String?       @unique
+  currency   String        @default("USD")
+  fxRate     Decimal?      @db.Decimal(12, 6)
+  total      Decimal       @db.Decimal(18, 2)
+  paid       Decimal       @default(0) @db.Decimal(18, 2)
+  balance    Decimal       @db.Decimal(18, 2)
+  dueDate    DateTime?
+  issueDate  DateTime      @default(now())
+  closedDate DateTime?
+  status     InvoiceStatus @default(OPEN)
+  notes      String?
+
+  order    PurchaseOrder?   @relation(fields: [orderId], references: [id])
+  quote    Quote?           @relation(fields: [quoteId], references: [id])
+  deal     Deal?            @relation(fields: [dealId], references: [id])
+  payments PaymentReceipt[]
+  cashFlows CashFlow[]
+
+  @@index([orderId])
+  @@index([quoteId])
+  @@index([dealId])
+  @@index([status])
+  @@index([dueDate])
+}
+
+enum PaymentDirection {
+  IN
+  OUT
+}
+
+// One payment against an invoice (partial payments supported). Links to the
+// dated cash flow it produced so funding balances and XIRR can be derived.
+model PaymentReceipt {
+  id         String           @id @default(cuid())
+  invoiceId  String?
+  cashFlowId String?          @unique
+  direction  PaymentDirection @default(IN)
+  amount     Decimal          @db.Decimal(18, 2)
+  currency   String           @default("USD")
+  fxRate     Decimal?         @db.Decimal(12, 6)
+  paidDate   DateTime         @default(now())
+  reference  String?
+  method     String?
+  notes      String?
+  createdBy  String?
+  createdAt  DateTime         @default(now())
+
+  invoice  Invoice?  @relation(fields: [invoiceId], references: [id])
+  cashFlow CashFlow? @relation(fields: [cashFlowId], references: [id])
+
+  @@index([invoiceId])
+  @@index([paidDate])
+}
+
+enum CashFlowType {
+  BUY_PAYMENT
+  SELL_RECEIPT
+  FINANCING_IN
+  FINANCING_OUT
+  RECOVERABLE_REFUND
+  DEPOSIT_SUPPLIER
+  DEPOSIT_CUSTOMER
+  ADJUSTMENT
+  OTHER
+}
+
+// One dated movement of cash. amountUsd is the signed USD impact (negative for
+// money out). This is the ledger XIRR and daily funding balances are built from.
+model CashFlow {
+  id        String       @id @default(cuid())
+  date      DateTime
+  type      CashFlowType
+  amountUsd Decimal      @db.Decimal(18, 2)
+  currency  String       @default("USD")
+  fxRate    Decimal?     @db.Decimal(12, 6)
+  orderId   String?
+  dealId    String?
+  quoteId   String?
+  invoiceId String?
+  reference String?
+  note      String?
+  createdBy String?
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  order          PurchaseOrder?  @relation(fields: [orderId], references: [id])
+  deal           Deal?           @relation(fields: [dealId], references: [id])
+  quote          Quote?          @relation(fields: [quoteId], references: [id])
+  invoice        Invoice?        @relation(fields: [invoiceId], references: [id])
+  paymentReceipt PaymentReceipt?
+
+  @@index([date])
+  @@index([type])
+  @@index([orderId])
+  @@index([dealId])
+  @@index([invoiceId])
+}
+
+enum FinancingStatus {
+  ACTIVE
+  REPAID
+  CANCELLED
+}
+
+// A financing facility/loan: dated principal funded minus interest, used for
+// daily funding balances and to carry financing cost into deal P&L.
+model FinancingEntry {
+  id           String          @id @default(cuid())
+  fromDate     DateTime
+  toDate       DateTime?
+  fundedDate   DateTime
+  repaidDate   DateTime?
+  principalUsd Decimal         @db.Decimal(18, 2)
+  rateAnnual   Decimal?        @db.Decimal(9, 6)
+  interestUsd  Decimal?        @db.Decimal(18, 2)
+  currency     String          @default("USD")
+  description  String?
+  dealId       String?
+  orderId      String?
+  status       FinancingStatus @default(ACTIVE)
+
+  deal  Deal?          @relation(fields: [dealId], references: [id])
+  order PurchaseOrder? @relation(fields: [orderId], references: [id])
+
+  @@index([fromDate])
+  @@index([fundedDate])
+  @@index([dealId])
+  @@index([orderId])
+  @@index([status])
 }

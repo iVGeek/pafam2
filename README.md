@@ -20,7 +20,7 @@ in **PostgreSQL**.
 | **Customers** | Customers, Demand, Notes (Plaud / reMarkable / manual), Tasks, Quotes |
 | **Intelligence** | Trends, Alerts, KPIs (with named owners), Dashboard |
 | **Own stock** | Inventory, aging buckets, reservations (no overselling), Supplied stock pools (deduplicated) |
-| **Reference** | FX (dated rates), Suppliers (scorecard incl. fill rate / on-time / claims), Claims &amp; returns, Audit log, Login |
+| **Reference** | FX (dated rates), Suppliers (scorecard incl. fill rate / on-time / claims), Claims &amp; returns, Cash flow (invoices, partial payments, financing, XIRR), Audit log, Login |
 
 ### Core rules the platform enforces
 
@@ -98,7 +98,7 @@ ADMIN_PASSWORD=<initial admin password>
 | `npm run db:seed` | Seed shared defaults (idempotent) |
 | `npm run db:generate` | Regenerate the Prisma client |
 | `npm run db:verify` | Run the core verification suite |
-| `npm run db:verify-*` | Targeted suites (pricing, alerts, demands, suppliers, exposure, opportunities, customer-pricing, inventory-analytics, kpis, clean, supply, receipts) |
+| `npm run db:verify-*` | Targeted suites (pricing, alerts, demands, suppliers, exposure, opportunities, customer-pricing, inventory-analytics, kpis, clean, supply, receipts, cashflow) |
 | `npm run verify:auth` | Auth / session / fail-closed checks |
 | `npm run verify:compare` | Price-list comparison checks |
 | `npm run verify:orders` | Order + PFI checks |
@@ -154,14 +154,11 @@ docs/
 
 Deliberately not yet implemented, and documented as such:
 
-- Dated cash flows, partial payments and **XIRR** (brief §8.4) — cash return is
-  currently approximated from a single cash-cycle-days figure.
-- Financing rates and daily funding balances (§8.4).
 - **Forecasts** (§12) — deferred until enough reliable history exists, as the
   brief requires.
 
 See [`docs/requirements.md`](docs/requirements.md) for the full brief and
-`docs/data-dictionary.md` §12 for the field-level version of this list.
+`docs/data-dictionary.md` §13 for the field-level version of this list.
 
 ---
 

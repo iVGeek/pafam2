@@ -168,12 +168,90 @@ annualisedReturnPct  = capitalEfficiencyPct × (365 / cashCycleDays)
   is explicitly not a forecast and not a guaranteed return** (§7.2, §9).
 - If `cashCycleDays` is unknown, `annualisedReturnPct` is `null` and a warning
   is raised — it is never guessed.
+- The annualised return above is the **estimate used before any money moves**. It
+  works from a single cycle length. Once dated cash flows exist for a deal, the
+  real **XIRR** (§8.4, below) is shown alongside it.
 
-**Known limitation (§8.4).** The brief asks for dated cash flows, partial
-payments with an outstanding balance, financing rates with funded dates, daily
-funding balances and XIRR where dated flows support it. The current engine uses
-a single scalar `cashCycleDays` and does **not** model a dated cash-flow ledger.
-See `docs/data-dictionary.md` §12.
+### Dated cash flows and XIRR (§8.4)
+
+Every movement of cash is recorded once, on its real date, as a signed USD
+amount (`CashFlow.amountUsd`): payments out are negative, receipts positive. The
+sign is set by the flow type so it can never drift:
+
+| Flow type | Sign |
+| --- | --- |
+| `BUY_PAYMENT`, `FINANCING_OUT`, `DEPOSIT_SUPPLIER` | out (−) |
+| `SELL_RECEIPT`, `FINANCING_IN`, `RECOVERABLE_REFUND`, `DEPOSIT_CUSTOMER` | in (+) |
+| `ADJUSTMENT`, `OTHER` | caller-chosen sign |
+
+**XIRR** is the annual rate `r` that makes the net present value of the dated
+flows zero, using an actual/365 day count:
+
+```
+NPV(r) = Σ amountUsdᵢ / (1 + r)^(daysᵢ / 365)  = 0
+```
+
+where `daysᵢ` is the number of days from the first flow. A series needs at least
+one inflow and one outflow to have a rate; when no sign change brackets a root
+the result is `null` rather than an invented number. XIRR is solved by bisection
+(with a Newton fallback) and reported as a percentage.
+
+**Deal cash return** (shown on the deal page once the deal has dated flows):
+
+```
+totalOutUsd   = Σ |negative flows|
+totalInUsd    = Σ  positive flows
+cashReturnPct = (totalInUsd − totalOutUsd) / totalOutUsd
+xirrPct       = XIRR(all dated flows) × 100
+holdingDays   = lastReceiptDate − firstPaidDate        (in days)
+```
+
+When a deal has no dated flows, `getDealCashReturn` returns `null` and the deal
+page falls back to the simple annualised estimate — the two are never mixed.
+
+### Partial payments and outstanding balances (§8.4)
+
+An invoice (supplier bill or customer invoice) has a `total`, a running `paid`
+and a `balance = total − paid`. Each payment records a `PaymentReceipt` **and** a
+dated `CashFlow` in one transaction, then updates the invoice:
+
+```
+paid    ← paid + payment               (a payment may not exceed balance)
+balance ← total − paid
+status  ← balance = 0 ? PAID : PARTIALLY_PAID
+```
+
+So a customer paying 400 of 1,000 leaves a 600 balance and status
+`PARTIALLY_PAID`; the second payment clears it to `PAID`. **Overpayment is
+rejected**, never silently absorbed.
+
+Overdue debt (KPI #6) is the sum of open customer-invoice balances whose
+`dueDate` is before the reporting date. It stays **pending** until an invoice
+exists, and is never reported as zero.
+
+### Financing and daily funding balances (§8.4)
+
+Financing stores the amount and the **dates funded** (and repaid), with an
+optional annual rate. Interest over a period is:
+
+```
+interestUsd = principalUsd × rateAnnual × (days / 365)
+```
+
+The **daily funding balance** for each day is:
+
+```
+financingOutstanding = Σ principal funded on or before the day, not yet repaid
+netCash              = Σ signed cash flows through the day
+fundingBalance       = financingOutstanding + netCash
+```
+
+A negative balance is capital we have funded from our own cash. Every day in the
+range is emitted, so the balance can be charted without gaps.
+
+Recoverable amounts (refundable deposits, supplier advances, customer deposits)
+enter these flows as their own types so they affect **funding** without becoming
+permanent cost (§8.2).
 
 ---
 
@@ -345,8 +423,6 @@ engine.
 
 ## 15. What is deliberately not modelled yet
 
-- **XIRR / dated cash flows / partial payments** (§8.4).
-- **Financing rate, funded dates, daily funding balances** (§8.4).
 - **Forecasts and backtesting** (§12) — deferred until enough reliable history
   exists, as the brief requires.
 - **Purchasing optimisation and accounting/warehouse integrations** (§17

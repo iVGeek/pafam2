@@ -187,7 +187,39 @@ Purchasing can log and resolve claims; Sales and Accounts cannot.
 
 ---
 
-## 8. Inventory and reservations
+## 8. Cash flow, invoices and financing
+
+Go to **Cash flow**. This is where money movements are recorded on their real
+dates so the platform can measure the return you actually earned. It is an
+**Accounts** area.
+
+**Invoices.** Record a supplier bill (money you owe) or a customer invoice
+(money owed to you), with a total, currency and due date. Each invoice tracks a
+running **paid** and **balance**.
+
+**Partial payments.** Record a payment against an invoice — it may be less than
+the balance. The invoice moves to **PARTIALLY_PAID** until paid in full, then
+**PAID**. A payment larger than the balance is **rejected**; the balance is never
+driven negative. Every payment writes a dated cash-flow entry automatically, so
+the invoice and the cash ledger always agree.
+
+**Cash ledger.** Record dated movements by type (buy payment, sell receipt,
+financing in/out, recoverable refund, deposits, adjustment). Payments out are
+negative, receipts positive; the sign is set by the type so it cannot drift.
+
+**Financing.** Record a facility with its **funded date**, optional repayment
+date and annual rate. Interest is `principal × rate × days/365`. The **daily
+funding balance** is `outstanding financing + net cash` for each day — a negative
+balance is your own cash at work in the business.
+
+**Return.** Once a deal has dated cash flows, its page shows the real
+**cash-on-cash return**, **XIRR** and holding period. Before any money moves, the
+deal page shows only the annualised **estimate** and says so. The two are never
+mixed.
+
+---
+
+## 9. Inventory and reservations
 
 Go to **Inventory**.
 
@@ -201,7 +233,7 @@ Go to **Inventory**.
 
 ---
 
-## 9. Reading the dashboards
+## 10. Reading the dashboards
 
 | Screen | Answers |
 | --- | --- |
@@ -215,12 +247,13 @@ Go to **Inventory**.
 | **Supply** | Observed available supply, deduplicated: each owner's lot counted once even when several brokers list it. Firm, indicative, incoming and on-request kept apart; unknown ownership shown as a range. |
 | **KPIs** | Quote conversion, lost-sale reasons, realised vs expected margin, fill rate, repeat purchases, overdue debt, cash deployment, exposure, stock turn. Each has a **named owner**. KPIs whose inputs don't exist yet are shown as **pending**, never as zero. |
 | **Claims** | Supplier claims and returns (shortage, damage, quality, late, return): count, value, open vs resolved. Feeds the supplier scorecard. |
+| **Cash flow** | Invoices with running balances, partial payments, the dated cash ledger, financing facilities and daily funding balances. Overdue customer balances feed KPI #6. |
 | **Alerts** | Configurable thresholds by brand or SKU; each alert carries evidence and a suggested action. |
 | **Audit** | Who changed what, when, with before/after values. |
 
 ---
 
-## 10. Rules that are enforced, not advisory
+## 11. Rules that are enforced, not advisory
 
 - Supplier names and buying costs **never** appear on customer quote exports.
 - A deal with unknown material costs is flagged **incomplete** — never a false
@@ -235,7 +268,7 @@ Go to **Inventory**.
 
 ---
 
-## 11. Roles and access
+## 12. Roles and access
 
 Every account has one role, and the role decides which parts of the platform the
 account can open. The role is shown next to your name in the header. If you open
@@ -248,14 +281,15 @@ an API call) that names your role and lists what you *can* open.
 | **MANAGER** | Everything — approves master-data exceptions and buying limits. |
 | **PURCHASING** | Dashboard, Market (offers, suppliers, products, pricing, trends, compare), Purchasing (orders, imports, exceptions, exposure, opportunities), Trading (deals, calculator, alerts), Inventory. |
 | **SALES** | Dashboard, Market, Trading, and Sales (customers, demand, notes, quotes, tasks). Does **not** see internal inventory, FX, KPIs or the audit log. |
-| **ACCOUNTS** | Dashboard, Trading, and Accounts (FX, KPIs, audit log). |
+| **ACCOUNTS** | Dashboard, Trading, and Accounts (FX, cash flow, invoices, financing, KPIs, audit log). |
 | **WAREHOUSE** | Dashboard, Inventory, and Claims (goods shortages, damage, returns). |
 
 Notes:
 
 - **Customer notes and commercial costs are restricted** to the roles above
   (§19): only SALES/MANAGER/ADMIN reach notes, customers, demand and quotes;
-  only ACCOUNTS/MANAGER/ADMIN reach FX, KPIs and the audit log.
+  only ACCOUNTS/MANAGER/ADMIN reach FX, KPIs, cash flow, invoices, financing and
+  the audit log.
 - **Writing thresholds is manager territory.** Reading settings is open to
   everyone; changing minimum margins, exposure caps, alert thresholds or KPI
   owners is limited to ADMIN, MANAGER and ACCOUNTS.
@@ -269,19 +303,16 @@ Notes:
 
 ---
 
-## 12. Known limitations
+## 13. Known limitations
 
 Be aware these are not modelled yet — do not expect the system to compute them:
 
-- **Dated cash flows, partial payments and XIRR** — cash return is approximated
-  from a single cash-cycle-days figure.
-- **Financing rates and daily funding balances.**
 - **Forecasts** — deliberately not produced until enough reliable history
   exists.
 
 ---
 
-## 13. Getting help
+## 14. Getting help
 
 - Every screen links to its data. If a number looks wrong, check the underlying
   record and the **Audit** log first.

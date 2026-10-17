@@ -47,6 +47,7 @@ const nav = [
   { href: "/exceptions", label: "Exceptions" },
   { href: "/products", label: "Products" },
   { href: "/fx", label: "FX" },
+  { href: "/cashflow", label: "Cash flow" },
   { href: "/audit", label: "Audit" },
 ] as const;
 
