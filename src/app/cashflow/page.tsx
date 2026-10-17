@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import SearchBar from "@/components/SearchBar";
 import {
   getOutstandingSummary,
   getFinancingSummary,
@@ -51,6 +52,7 @@ export default async function CashFlowPage() {
           balances, financing and XIRR all come from them (§8.4).
         </p>
       </div>
+      <SearchBar placeholder="Search…" />
 
       <div className="grid grid-cols-2 gap-4 rounded-lg border border-zinc-200 bg-white p-5 text-sm sm:grid-cols-4 dark:border-zinc-800 dark:bg-zinc-900">
         <Stat label="Receivables (owed to us)" value={usd(outstanding.receivableUsd)} />

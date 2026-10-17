@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { getDemandPipeline } from "@/lib/demands";
 import { dateStr, money, qty, usd } from "@/lib/format";
 import { NewDemandForm, DemandApproveButton } from "./demand-controls";
+import SearchBar from "@/components/SearchBar";
 
 export const dynamic = "force-dynamic";
 
@@ -29,6 +30,7 @@ export default async function DemandsPage() {
           recommendations match against; unclear SKUs stay unresolved rather than being invented.
         </p>
       </div>
+      <SearchBar placeholder="Search…" />
 
       <NewDemandForm
         customers={customers.map((c) => ({ id: c.id, label: c.name }))}

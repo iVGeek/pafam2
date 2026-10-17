@@ -2,6 +2,7 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { money, usd } from "@/lib/format";
 import { NewCustomerForm } from "./new-customer-form";
+import SearchBar from "@/components/SearchBar";
 
 export const dynamic = "force-dynamic";
 
@@ -21,6 +22,7 @@ export default async function CustomersPage() {
           payment terms and credit limit.
         </p>
       </div>
+      <SearchBar placeholder="Search…" />
 
       <NewCustomerForm />
 

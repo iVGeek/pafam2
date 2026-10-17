@@ -1,5 +1,6 @@
 import { getObservedSupply } from "@/lib/supply";
 import { qty } from "@/lib/format";
+import SearchBar from "@/components/SearchBar";
 
 export const dynamic = "force-dynamic";
 
@@ -37,6 +38,7 @@ export default async function SupplyPage() {
           As of {supply.asOf} · confirmed within {supply.freshnessDays} days counts as fresh
         </p>
       </div>
+      <SearchBar placeholder="Search…" />
 
       <section className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         <Stat label="Confirmed (deduplicated)" value={qty(totals.confirmedQuantity)} />

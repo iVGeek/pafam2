@@ -2,6 +2,7 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { orderTotals } from "@/lib/orders";
 import { dateStr, money, qty } from "@/lib/format";
+import SearchBar from "@/components/SearchBar";
 
 export const dynamic = "force-dynamic";
 
@@ -35,6 +36,7 @@ export default async function OrdersPage() {
             against what we ordered.
           </p>
         </div>
+      <SearchBar placeholder="Search…" />
         <Link
           href="/orders/new"
           className="rounded-md bg-zinc-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-zinc-700 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300"

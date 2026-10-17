@@ -1,6 +1,7 @@
 import { getExposure, getExposureCaps } from "@/lib/exposure";
 import { usd } from "@/lib/format";
 import { ExposureCapsForm } from "./exposure-caps-form";
+import SearchBar from "@/components/SearchBar";
 
 export const dynamic = "force-dynamic";
 
@@ -31,6 +32,7 @@ export default async function ExposurePage() {
           </p>
           <p className="mt-1 text-xs text-zinc-500">As of {asOf}</p>
         </div>
+      <SearchBar placeholder="Search…" />
         <ExposureCapsForm caps={JSON.stringify(caps, null, 2)} />
       </div>
 

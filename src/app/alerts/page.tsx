@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { computeAlerts, getAlertOverrides, getAlertSettings, type AlertSeverity } from "@/lib/alerts";
 import { AlertSettingsForm } from "./alert-settings-form";
+import SearchBar from "@/components/SearchBar";
 
 export const dynamic = "force-dynamic";
 

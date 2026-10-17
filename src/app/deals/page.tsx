@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { listDeals } from "@/lib/deals";
 import { dateStr, pct, qty, usd } from "@/lib/format";
+import SearchBar from "@/components/SearchBar";
 
 export const dynamic = "force-dynamic";
 
@@ -17,6 +18,7 @@ export default async function DealsPage() {
             recomputed from inputs on every save.
           </p>
         </div>
+      <SearchBar placeholder="Search…" />
         <Link
           href="/deals/new"
           className="rounded-md bg-zinc-900 px-3 py-1.5 text-sm font-medium text-white dark:bg-zinc-100 dark:text-zinc-900"

@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import SearchBar from "@/components/SearchBar";
 import {
   getCoverBySku,
   getInventoryAnalytics,
@@ -70,6 +71,7 @@ export default async function InventoryPage() {
           reservations. Inbound units are excluded until received.
         </p>
       </div>
+      <SearchBar placeholder="Search…" />
 
       <section className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
         {stats.map((s) => (

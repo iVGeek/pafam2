@@ -1,5 +1,6 @@
 import { getSupplierScorecard } from "@/lib/suppliers";
 import { pct, qty, usd } from "@/lib/format";
+import SearchBar from "@/components/SearchBar";
 
 export const dynamic = "force-dynamic";
 
@@ -21,6 +22,7 @@ export default async function SuppliersPage() {
         </p>
         <p className="mt-1 text-xs text-zinc-500">As of {asOf}</p>
       </div>
+      <SearchBar placeholder="Search…" />
 
       <section>
         <h2 className="text-lg font-medium">Ranking (suppliers with priced, active offers)</h2>

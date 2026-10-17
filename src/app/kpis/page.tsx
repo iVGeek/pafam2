@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getKpiOwners, getKpis, KPI_OWNER_DEFAULTS } from "@/lib/kpis";
 import { KpiOwnersForm } from "./kpi-owners-form";
+import SearchBar from "@/components/SearchBar";
 
 export const dynamic = "force-dynamic";
 
@@ -19,6 +20,7 @@ export default async function KpisPage() {
           </p>
           <p className="mt-1 text-xs text-zinc-500">As of {asOf}</p>
         </div>
+      <SearchBar placeholder="Search…" />
         <KpiOwnersForm owners={JSON.stringify({ ...KPI_OWNER_DEFAULTS, ...owners }, null, 2)} />
       </div>
 

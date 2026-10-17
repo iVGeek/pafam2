@@ -2,6 +2,7 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { dateStr } from "@/lib/format";
 import { NewNoteForm } from "./new-note-form";
+import SearchBar from "@/components/SearchBar";
 
 export const dynamic = "force-dynamic";
 

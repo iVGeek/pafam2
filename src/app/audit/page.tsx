@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
+import SearchBar from "@/components/SearchBar";
 
 export const dynamic = "force-dynamic";
 
@@ -97,6 +98,7 @@ export default async function AuditPage({ searchParams }: { searchParams: Promis
             {entries.length}
           </p>
         </div>
+      <SearchBar placeholder="Search…" />
       </div>
 
       <form method="GET" className="flex flex-wrap items-end gap-3 rounded-lg border border-zinc-200 p-3 dark:border-zinc-800">

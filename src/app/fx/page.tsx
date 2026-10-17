@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { dateStr } from "@/lib/format";
 import { FxForm } from "./fx-form";
+import SearchBar from "@/components/SearchBar";
 
 export const dynamic = "force-dynamic";
 
@@ -19,6 +20,7 @@ export default async function FxPage() {
           before the deal date is used; the original currency and source are always retained.
         </p>
       </div>
+      <SearchBar placeholder="Search…" />
 
       <FxForm />
 

@@ -1,5 +1,6 @@
 import { getOpportunityRanking, OPPORTUNITY_DIMENSIONS } from "@/lib/opportunities";
 import { pct, qty, usd } from "@/lib/format";
+import SearchBar from "@/components/SearchBar";
 
 export const dynamic = "force-dynamic";
 
@@ -17,6 +18,7 @@ export default async function OpportunitiesPage() {
         </p>
         <p className="mt-1 text-xs text-zinc-500">As of {asOf}</p>
       </div>
+      <SearchBar placeholder="Search…" />
 
       <section className="rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
         <h2 className="text-sm font-medium">How the score is built</h2>

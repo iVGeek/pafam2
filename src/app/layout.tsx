@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Geist, Geist_Mono } from "next/font/google";
 import { getCurrentUser } from "@/lib/session";
 import { canAccess } from "@/lib/access";
+import AIAssistant from "@/components/AIAssistant";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -107,6 +108,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
               Records and history are authoritative here; Excel is import/export
               only.
             </footer>
+            {user && <AIAssistant />}
           </>
         ) : (
           <main className="mx-auto w-full max-w-6xl flex-1 px-6 py-8">

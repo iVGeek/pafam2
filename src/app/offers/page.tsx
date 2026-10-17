@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { daysAgo, money, qty } from "@/lib/format";
+import SearchBar from "@/components/SearchBar";
 
 export const dynamic = "force-dynamic";
 
@@ -24,6 +25,7 @@ export default async function OffersPage() {
           file, not our own stock.
         </p>
       </div>
+      <SearchBar placeholder="Search…" />
 
       <section className="overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-800">
         <table className="w-full text-sm">

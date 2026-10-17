@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { getTradingSettings } from "@/lib/deals";
+import SearchBar from "@/components/SearchBar";
 import {
   getCustomerPricingConfig,
   parsePaymentTermDays,
@@ -43,6 +44,7 @@ export default async function PricingPage() {
             customer&apos;s payment terms change per customer.
           </p>
         </div>
+      <SearchBar placeholder="Search…" />
         <CustomerPricingForm config={JSON.stringify(config, null, 2)} />
       </div>
 

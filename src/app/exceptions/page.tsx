@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { ResolveControls } from "./resolve-controls";
+import SearchBar from "@/components/SearchBar";
 
 export const dynamic = "force-dynamic";
 
@@ -48,6 +49,7 @@ export default async function ExceptionsPage() {
           product master, or dismiss warnings you have reviewed.
         </p>
       </div>
+      <SearchBar placeholder="Search…" />
 
       <section className="flex flex-wrap gap-3 text-sm">
         {Object.entries(grouped).map(([code, count]) => (

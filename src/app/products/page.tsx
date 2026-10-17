@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import { NewProductForm } from "./new-product-form";
+import SearchBar from "@/components/SearchBar";
 
 export const dynamic = "force-dynamic";
 
@@ -23,6 +24,7 @@ export default async function ProductsPage() {
             alias table.
           </p>
         </div>
+      <SearchBar placeholder="Search…" />
       </div>
 
       <NewProductForm />
